@@ -78,6 +78,7 @@
   "approved_total_sitting",
   "weekend_over_time_section",
   "weekend_present",
+  "lates",
   "column_break_zens",
   "weekend_absent",
   "column_break_thtz",
@@ -633,7 +634,7 @@
   {
    "fieldname": "total_absent_check_in_missing",
    "fieldtype": "Float",
-   "label": "Total Absent Check In Missing"
+   "label": "Total Half Day Check In Missing"
   },
   {
    "fieldname": "column_break_syeq",
@@ -647,7 +648,7 @@
   {
    "fieldname": "total_halfday_missing_check_out",
    "fieldtype": "Float",
-   "label": "Total Halfday Missing Check Out "
+   "label": "Total Half day Missing Check Out "
   },
   {
    "fieldname": "weekend_over_time_section",
@@ -676,11 +677,16 @@
   {
    "fieldname": "column_break_thtz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lates",
+   "fieldtype": "Float",
+   "label": "Lates"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2024-10-29 16:59:28.096491",
+ "modified": "2024-10-29 18:44:40.813863",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Employee Attendance",

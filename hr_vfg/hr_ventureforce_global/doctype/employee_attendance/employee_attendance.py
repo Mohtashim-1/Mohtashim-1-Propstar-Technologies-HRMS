@@ -67,6 +67,7 @@ class EmployeeAttendance(Document):
         _, num_days = calendar.monthrange(year, month)
         first_day = dt(year, month, 1)
         last_day = dt(year, month, num_days)
+        
 
         if hr_settings.period_from != 1:
             if month == 1:
@@ -120,6 +121,8 @@ class EmployeeAttendance(Document):
         self.weekend_half_day = 0
         self.weekend_absent = 0
         self.weekend_present = 0
+        late = 0
+        self.lates = 0
 
         # Convert time string to timedelta
         def str_to_timedelta(time_str):
@@ -127,6 +130,10 @@ class EmployeeAttendance(Document):
                 time_parts = list(map(int, time_str.split(':')))
                 return timedelta(hours=time_parts[0], minutes=time_parts[1], seconds=time_parts[2])
             return timedelta(0)
+        
+        for data in self.table1:
+            late += data.late
+        self.lates = late
 
 
         for data in self.table1:
