@@ -61,6 +61,7 @@ class EmployeeAttendance(Document):
         self.total_extra_duty_for_fullday = 0
         holidays = []
         hr_settings = frappe.get_single('V HR Settings')
+        allowance_settings = frappe.get_single('Attendance Allowance Settings')
         #try:
         month = self.get_month_no(self.month)
         year = int(self.year)
@@ -123,6 +124,7 @@ class EmployeeAttendance(Document):
         self.weekend_present = 0
         late = 0
         self.lates = 0
+        self.attendance_allowance = 0 
 
         # Convert time string to timedelta
         def str_to_timedelta(time_str):
@@ -134,6 +136,31 @@ class EmployeeAttendance(Document):
         for data in self.table1:
             late += data.late
         self.lates = late
+
+        employee1 = frappe.get_doc("Employee",self.employee)
+        allowed_att_allowance = employee1.custom_allowance_allowed
+        for data in self.table1:    
+            if allowed_att_allowance == 1:
+                if allowance_settings.attendance_allowance_allowed:
+                    for a in allowance_settings.attendance_allowance_slab:
+                        if a.missing_check_in__check_out == self.total_absent_check_in_missing:
+                            if self.half_day_threshould == 1: 
+                                self.attendance_allowance = a.allowance_amount
+                            elif self.half_day_threshould >= 2:
+                                self.attendance_allowance = 0
+                            elif self.absent_threshould >= 1:
+                                self.attendance_allowance = 0
+
+
+                            else:
+                                self.attendance_allowance = a.allowance_amount
+
+                        # else:
+                        #     self.attendance_allowance = 1010
+            else:
+                self.attendance_allowance = 0
+
+            
 
 
         for data in self.table1:

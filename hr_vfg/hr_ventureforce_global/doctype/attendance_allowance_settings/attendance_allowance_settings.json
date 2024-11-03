@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-03 21:09:11.823453",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "attendance_allowance_allowed",
+  "attendance_allowance_slab"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "attendance_allowance_allowed",
+   "fieldtype": "Check",
+   "label": "Attendance Allowance Allowed?"
+  },
+  {
+   "fieldname": "attendance_allowance_slab",
+   "fieldtype": "Table",
+   "label": "Attendance Allowance Slab",
+   "options": "Attendance Allowance Slab"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-11-03 21:16:27.290121",
+ "modified_by": "Administrator",
+ "module": "HR VentureForce Global",
+ "name": "Attendance Allowance Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
