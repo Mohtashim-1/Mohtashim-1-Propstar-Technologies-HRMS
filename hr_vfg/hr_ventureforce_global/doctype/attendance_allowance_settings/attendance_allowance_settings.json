@@ -5,8 +5,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "policy_section",
   "attendance_allowance_allowed",
-  "attendance_allowance_slab"
+  "attendance_allowance_slab",
+  "puntuality_allowance",
+  "puntuality_allowance_ct",
+  "tab_break_skxe",
+  "allowance_eligibility_ct"
  ],
  "fields": [
   {
@@ -20,12 +25,40 @@
    "fieldtype": "Table",
    "label": "Attendance Allowance Slab",
    "options": "Attendance Allowance Slab"
+  },
+  {
+   "default": "0",
+   "fieldname": "puntuality_allowance",
+   "fieldtype": "Check",
+   "label": "Puntuality Allowance?"
+  },
+  {
+   "fieldname": "puntuality_allowance_ct",
+   "fieldtype": "Table",
+   "label": "Puntuality Allowance CT",
+   "options": "Puntuality Allowance CT"
+  },
+  {
+   "fieldname": "policy_section",
+   "fieldtype": "Section Break",
+   "label": "Policy"
+  },
+  {
+   "fieldname": "tab_break_skxe",
+   "fieldtype": "Tab Break",
+   "label": "Eligibility"
+  },
+  {
+   "fieldname": "allowance_eligibility_ct",
+   "fieldtype": "Table",
+   "label": "Allowance Eligibility CT",
+   "options": "Allowance Eligibility CT"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-11-03 21:16:27.290121",
+ "modified": "2024-11-04 13:18:30.589202",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Attendance Allowance Settings",

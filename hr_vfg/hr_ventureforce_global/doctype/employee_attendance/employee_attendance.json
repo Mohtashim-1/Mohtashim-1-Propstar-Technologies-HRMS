@@ -116,7 +116,10 @@
   "column_break_foba",
   "fuel_allowance_total",
   "section_break_vsxd",
-  "attendance_allowance"
+  "attendance_allowance",
+  "column_break_yqia",
+  "puntuality_allowance",
+  "allowance_"
  ],
  "fields": [
   {
@@ -440,7 +443,7 @@
   {
    "fetch_from": "employee.date_of_joining",
    "fieldname": "joining_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Joining Date"
   },
   {
@@ -693,11 +696,25 @@
    "fieldname": "attendance_allowance",
    "fieldtype": "Float",
    "label": "Attendance Allowance"
+  },
+  {
+   "fieldname": "column_break_yqia",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "puntuality_allowance",
+   "fieldtype": "Float",
+   "label": "Puntuality Allowance"
+  },
+  {
+   "fieldname": "allowance_",
+   "fieldtype": "Float",
+   "label": "Allowance %"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2024-11-03 21:31:38.923855",
+ "modified": "2024-11-04 13:59:10.651106",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Employee Attendance",

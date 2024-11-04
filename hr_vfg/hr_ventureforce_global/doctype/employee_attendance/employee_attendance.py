@@ -125,6 +125,52 @@ class EmployeeAttendance(Document):
         late = 0
         self.lates = 0
         self.attendance_allowance = 0 
+        self.puntuality_allowance = 0
+
+        # Dictionary to map month names to numbers
+        # Dictionary to map month names to numbers
+        month_name_to_number = {
+            "January": 1, "February": 2, "March": 3, "April": 4,
+            "May": 5, "June": 6, "July": 7, "August": 8,
+            "September": 9, "October": 10, "November": 11, "December": 12
+        }
+
+        for data in self.table1:
+            joining_date = self.joining_date
+
+            if joining_date:
+                # Access year and month directly from the joining_date object
+                joining_year = joining_date.year
+                joining_month = joining_date.month
+                joining_date_str = joining_date.strftime("%d-%m-%Y")
+                joining_day = joining_date.day
+
+                # Convert self.year and self.month from string to integer (month from dictionary)
+                current_year = int(self.year)
+                current_month = month_name_to_number.get(self.month, 0)  # Default to 0 if month name is invalid
+
+                # Compare years and months
+                if joining_year <= current_year:
+                    if joining_month <= current_month:
+                        # frappe.log_error(f"joining_month{joining_month}current_month{current_month}")
+                        if joining_day:
+                            for a in allowance_settings.allowance_eligibility_ct:
+                                if a.from_date <= joining_day <= a.to_date:
+                                    self.allowance_ = a.percentage
+                                    break 
+                                else:
+                                    self.allowance_ = 0
+                        else:
+                            self.allowance_ = 0
+                        # frappe.log_error(f"joining_day{joining_day}")
+                    else:
+                        # frappe.log_error(f"joining_month{joining_month}current_month{current_month}")
+                        self.allowance_ = 0
+                else:
+                    self.allowance_ = 0
+            else:
+                self.allowance_ = 0       
+
 
         # Convert time string to timedelta
         def str_to_timedelta(time_str):
@@ -139,6 +185,7 @@ class EmployeeAttendance(Document):
 
         employee1 = frappe.get_doc("Employee",self.employee)
         allowed_att_allowance = employee1.custom_allowance_allowed
+        allowed_puntuality_allowance = employee1.custom_puntuality_allowance
         for data in self.table1:    
             if allowed_att_allowance == 1:
                 if allowance_settings.attendance_allowance_allowed:
@@ -150,10 +197,20 @@ class EmployeeAttendance(Document):
                                 self.attendance_allowance = 0
                             elif self.absent_threshould >= 1:
                                 self.attendance_allowance = 0
-
-
                             else:
                                 self.attendance_allowance = a.allowance_amount
+            if allowed_puntuality_allowance == 1:
+                if allowance_settings.puntuality_allowance == 1:
+                    for b in allowance_settings.puntuality_allowance_ct:
+                        # Check if `self.lates` is within the range
+                        if b.from_late <= self.lates <= b.to_late:
+                            self.puntuality_allowance = b.amount
+                            break  # Exit loop once the matching range is found
+            # if allowed_puntuality_allowance == 1:
+            #     if allowance_settings.puntuality_allowance == 1:
+            #         for b in allowance_settings.puntuality_allowance_ct:
+            #             if self.lates >= b.from_late or self.lates <= b.to_late:
+            #                 self.puntuality_allowance = b.amount
 
                         # else:
                         #     self.attendance_allowance = 1010
