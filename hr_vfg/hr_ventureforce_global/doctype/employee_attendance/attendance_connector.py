@@ -15,6 +15,12 @@ import json
 from datetime import datetime
 from datetime import timedelta
 
+def validate(self):
+	# Ensure `machine` is defined here or modify the method to pass necessary arguments
+        hr_settings = frappe.get_single('V HR Settings')
+        for machine in hr_settings.attendance_machine:
+            # Pass args as needed along with machine details
+            self.get_checkins_checkouts(args={}, ip=machine.ip, port=machine.port, password=machine.password)
 
 @frappe.whitelist()
 def get_attendance_long(**args):
@@ -461,76 +467,111 @@ def get_checkins_checkouts(args=None,ip=None, port=None,password=0):
 				import json
 				#print(attendance_dict)
 				for users in attendance_dict:
-					print(users)
+					print(f"users{users}")
 					for dates in attendance_dict[users]:
 						try:
 							date = dates
 							check_in = attendance_dict[users][dates].get("check in")
 							check_in_string = attendance_dict[users][dates].get("checkin string")
+							# check_in_string = "attendance_dict"
 							check_out = attendance_dict[users][dates].get("check out")
 							check_out_string = attendance_dict[users][dates].get("checkout string")
 							
-							if check_in:
-									d_a = str(utils.today()) +" 8:30:0"
-									d_b = str(utils.today()) +" 1:0:0"
-									d_s = str(utils.today()) +" 23:59:00"
-									d_c = str(date+" "+check_in)
-									temp_chk_in = check_in
+							if check_in_string:
+								# Split the string based on the parentheses
+								split_string = check_in_string.split('(')
+								
+								# Get the part after the '(' and strip any unwanted characters (e.g., spaces, commas)
+								last_value = int(split_string[1].split(')')[0].strip().split(',')[-1])
 
-									res = frappe.db.sql(""" select name, biometric_id from `tabAttendance Logs` where 
-									biometric_id=%s and attendance_date=%s and attendance_time=%s and type='Check In'""", 
-									(users, str(date), check_in))
-									if res:
-										
-										atl = frappe.get_doc("Attendance Logs",res[0][0])
-										atl.save()
-									else:
-										print("adding check in")
-										doc1 = frappe.new_doc("Attendance Logs")
-										doc1.attendance = check_in_string
-										doc1.biometric_id= users
-										doc1.attendance_date= str(date)
-										doc1.attendance_time= str(check_in)
+								# Log the result
+								frappe.log_error(f"Last value: {date} {last_value}")
+
+								# Prepare datetime strings
+								d_a = str(utils.today()) + " 8:30:00"
+								d_b = str(utils.today()) + " 1:00:00"
+								d_s = str(date + " 23:59:00")
+								d_c = str(date + " " + check_in)
+								
+								temp_chk_in = check_in
+
+								# Check if an existing record exists in Attendance Logs
+								res = frappe.db.sql(""" 
+									SELECT name, biometric_id 
+									FROM `tabAttendance Logs` 
+									WHERE biometric_id=%s AND attendance_date=%s AND attendance_time=%s AND type='Check In'""", 
+									(users, str(date), check_in)
+								)
+
+								if res:
+									# Update the existing Attendance Log if found
+									atl = frappe.get_doc("Attendance Logs", res[0][0])
+									atl.save()
+								else:
+									# Add new Check In record
+									print("Adding Check In")
+									doc1 = frappe.new_doc("Attendance Logs")
+									doc1.attendance = check_in_string
+									doc1.biometric_id = users
+									doc1.attendance_date = str(date)
+									doc1.attendance_time = str(check_in)
+									
+									if last_value == '0' or last_value == 0:  # Ensure comparison is with a string '0'
 										doc1.type = "Check In"
-										doc1.ip = ip+":"+port
-										doc1.save()
-							if check_out:
-									
-									if check_in:
-										x = datetime.strptime(
-                        					str(temp_chk_in), '%H:%M:%S').time()
-										y = datetime.strptime(
-                        					str(check_out), '%H:%M:%S').time()
-										hi,mi,si = str(x).split(':')
-										ho,mo,so = str(y).split(':')
-										diff_time = timedelta(hours=0, minutes=30, seconds=0)
-										
-										if (timedelta(hours=float(ho), minutes=float(mo), seconds=float(so))-timedelta(hours=float(hi), minutes=float(mi), seconds=float(si))) < diff_time:
-											continue
+									else:
+										doc1.type = "Check Out"
 
 									
-									d_a = str(utils.today()) +" 8:30:0"
-									d_b = str(utils.today()) +" 1:0:0"
-									d_s = str(utils.today()) +" 23:59:00"
-									d_c = str(date+" "+check_out)
+									doc1.ip = ip + ":" + port
+									doc1.save()
 
-									res = frappe.db.sql(""" select name, biometric_id from `tabAttendance Logs` where 
-									biometric_id=%s and attendance_date=%s and attendance_time=%s and type='Check Out'""", 
-									(users, str(date), check_out))
+							if check_out_string:
+								# Split the string based on the parentheses
+								split_string1 = check_out_string.split('(')
+								
+								# Get the part after the '(' and strip any unwanted characters (e.g., spaces, commas)
+								last_value1 = int(split_string1[1].split(')')[0].strip().split(',')[-1])
+								
+								# Log the last_value and other details for debugging
+								frappe.log_error(f"Last value: {date} {last_value1}")
+
+								if check_in:
+									# Proceed only if the check_in exists and is valid
+									x = datetime.strptime(str(temp_chk_in), '%H:%M:%S').time()
+									y = datetime.strptime(str(check_out), '%H:%M:%S').time()
+									hi, mi, si = map(int, str(x).split(':'))
+									ho, mo, so = map(int, str(y).split(':'))
+									diff_time = timedelta(hours=0, minutes=30, seconds=0)
+
+									time_diff = timedelta(hours=ho, minutes=mo, seconds=so) - timedelta(hours=hi, minutes=mi, seconds=si)
+									if time_diff < diff_time:
+										continue
+
+								# Check if the last_value1 equals 1 (meaning it should be a "Check Out")
+								if last_value1 == 1:
+									# Perform "Check Out" action
+									res = frappe.db.sql(""" 
+										SELECT name, biometric_id 
+										FROM `tabAttendance Logs` 
+										WHERE biometric_id=%s AND attendance_date=%s AND attendance_time=%s AND type='Check Out'""", 
+										(users, str(date), check_out)
+									)
+
 									if res:
-										
-										atl = frappe.get_doc("Attendance Logs",res[0][0])
+										atl = frappe.get_doc("Attendance Logs", res[0][0])
 										atl.save()
 									else:
-										print("adding check out")
+										# Create a new "Check Out" record
 										doc2 = frappe.new_doc("Attendance Logs")
 										doc2.attendance = check_out_string
-										doc2.biometric_id= users
-										doc2.attendance_date= str(date)
-										doc2.attendance_time= str(check_out)
+										doc2.biometric_id = users
+										doc2.attendance_date = str(date)
+										doc2.attendance_time = str(check_out)
 										doc2.type = "Check Out"
-										doc2.ip = ip+":"+port
+										doc2.ip = ip + ":" + port
 										doc2.save()
+								else:
+									frappe.log_error(f"Skipped Check Out for {date}, last_value: {last_value1}")
 						except:
 							frappe.log_error(frappe.get_traceback(),"Attendance hook test")
 				
