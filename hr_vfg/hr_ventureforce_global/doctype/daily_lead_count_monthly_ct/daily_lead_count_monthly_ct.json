@@ -122,7 +122,8 @@
   {
    "fieldname": "validity_ratio",
    "fieldtype": "Percent",
-   "label": "Validity Ratio"
+   "label": "Validity Ratio",
+   "precision": "2"
   },
   {
    "columns": 1,
@@ -137,13 +138,14 @@
   {
    "fieldname": "in_validity_ratio",
    "fieldtype": "Percent",
-   "label": "In Validity Ratio"
+   "label": "In Validity Ratio",
+   "precision": "2"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-10 17:14:15.558520",
+ "modified": "2024-11-10 18:01:17.785318",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Daily Lead Count Monthly CT",

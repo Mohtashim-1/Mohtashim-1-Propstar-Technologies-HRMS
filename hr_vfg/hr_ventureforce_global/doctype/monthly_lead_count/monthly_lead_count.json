@@ -26,7 +26,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Daily Lead Count Monthly",
+   "options": "Monthly Lead Count",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
@@ -48,7 +48,7 @@
   },
   {
    "fieldname": "from_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "From Date"
   },
   {
@@ -57,7 +57,7 @@
   },
   {
    "fieldname": "to_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "To Date"
   },
   {
@@ -74,7 +74,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-10 17:15:01.347917",
+ "modified": "2024-11-10 17:30:00.556150",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Monthly Lead Count",
