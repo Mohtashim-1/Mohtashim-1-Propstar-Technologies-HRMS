@@ -129,6 +129,13 @@ class EmployeeAttendance(Document):
 
         # Dictionary to map month names to numbers
         # Dictionary to map month names to numbers
+
+        for data in self.table1:
+            employee1 = frappe.get_doc("Employee",self.employee)
+            performance_allowance = employee1.custom_performance_allowance
+            if performance_allowance == 1:
+                pass
+        
         month_name_to_number = {
             "January": 1, "February": 2, "March": 3, "April": 4,
             "May": 5, "June": 6, "July": 7, "August": 8,

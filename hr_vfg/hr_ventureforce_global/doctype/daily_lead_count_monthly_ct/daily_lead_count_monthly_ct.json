@@ -1,0 +1,155 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-10 17:01:48.363131",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "total_leads",
+  "rank",
+  "allowance",
+  "column_break_ahyu",
+  "dialer_name",
+  "void_leads",
+  "working_days",
+  "column_break_sjzb",
+  "designation",
+  "total_quality_leads",
+  "validity_ratio",
+  "column_break_nanh",
+  "department",
+  "no_of_calls",
+  "in_validity_ratio"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "columns": 1,
+   "fetch_from": "employee.custom_suffix",
+   "fieldname": "dialer_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Dialer Name"
+  },
+  {
+   "fieldname": "column_break_ahyu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_sjzb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fieldname": "column_break_nanh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
+   "columns": 1,
+   "fieldname": "total_leads",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Total Leads"
+  },
+  {
+   "fieldname": "rank",
+   "fieldtype": "Float",
+   "label": "Rank"
+  },
+  {
+   "columns": 1,
+   "fieldname": "allowance",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Allowance"
+  },
+  {
+   "columns": 1,
+   "fieldname": "void_leads",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Void Leads"
+  },
+  {
+   "fieldname": "working_days",
+   "fieldtype": "Float",
+   "label": "Working Days"
+  },
+  {
+   "columns": 1,
+   "fieldname": "total_quality_leads",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Total Quality Leads"
+  },
+  {
+   "fieldname": "validity_ratio",
+   "fieldtype": "Percent",
+   "label": "Validity Ratio"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_calls",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "No. of Calls"
+  },
+  {
+   "fieldname": "in_validity_ratio",
+   "fieldtype": "Percent",
+   "label": "In Validity Ratio"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-10 17:14:15.558520",
+ "modified_by": "Administrator",
+ "module": "HR VentureForce Global",
+ "name": "Daily Lead Count Monthly CT",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

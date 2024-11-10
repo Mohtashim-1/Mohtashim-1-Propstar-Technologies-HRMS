@@ -1,0 +1,95 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-09 21:20:31.878969",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "designation",
+  "department",
+  "column_break_qvaf",
+  "total_leads",
+  "column_break_wsor",
+  "invalid_leads",
+  "column_break_jjmg",
+  "no_of_calls"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "column_break_qvaf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_leads",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Total Leads"
+  },
+  {
+   "fieldname": "column_break_wsor",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "invalid_leads",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Invalid Leads"
+  },
+  {
+   "fieldname": "column_break_jjmg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_calls",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "No. of Calls"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-10 16:28:15.917845",
+ "modified_by": "Administrator",
+ "module": "HR VentureForce Global",
+ "name": "Daily Lead Count CT",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

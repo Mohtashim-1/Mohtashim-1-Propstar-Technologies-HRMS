@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:DLC-{DD}-{MM}-{YY}-{#####}",
+ "creation": "2024-11-04 15:06:50.211238",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_datetime",
+  "get_data",
+  "column_break_ccts",
+  "date",
+  "lead_data_section",
+  "daily_lead_count_ct",
+  "section_break_2vmn",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_2vmn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Daily Lead Count",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "label": "Posting Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ccts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "get_data",
+   "fieldtype": "Button",
+   "label": "Get Data"
+  },
+  {
+   "fieldname": "lead_data_section",
+   "fieldtype": "Section Break",
+   "label": "Lead Data"
+  },
+  {
+   "fieldname": "daily_lead_count_ct",
+   "fieldtype": "Table",
+   "label": "Daily Lead Count CT",
+   "options": "Daily Lead Count CT"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-11-10 16:33:20.602693",
+ "modified_by": "Administrator",
+ "module": "HR VentureForce Global",
+ "name": "Daily Lead Count",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
+}
