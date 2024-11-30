@@ -137,15 +137,21 @@ def get_datas(filters=None):
     attendance_records = frappe.get_all(
         'Employee Attendance',
         filters=conditions,
-        fields=['employee', 'employee_name', 'month', 'year']
+        fields=['name','employee', 'employee_name']
     )
 
     data = []
 
     for record in attendance_records:
-        attendance_doc = frappe.get_doc('Employee Attendance','MOHTASHIM MUHAMMAD SHOAIB-September00109')
-        
+        attendance_doc = frappe.get_doc("Employee Attendance", record['name'])
         check_in_out_data = {'employee': record['employee'], 'employee_name': record['employee_name']}
+        # attendance_doc = frappe.get_all('Employee Attendance',
+        #                                 fields=['name', 'employee', 'employee_name'],
+        #                                 )
+        # data = []
+        # for doc in attendance_doc:
+            # attendance_doc = frappe.get_doc("Employee Attendance", doc.name)
+        # check_in_out_data = {'employee': record['employee'], 'employee_name': record['employee_name']}
         
         late_count, absent_count, leave_count = 0, 0, 0
 
