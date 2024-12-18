@@ -17,13 +17,47 @@ import time
 class AttendanceLogs(TransactionBase):
 	def validate(self):
 		self.get_employee_attendance()
+		self.parse_date_and_time()
+
+	def parse_date_and_time(self):
+
+		if self.date_and_time:
+			try:
+				dt = datetime.datetime.strptime(self.date_and_time, "%m/%d/%Y %I:%M:%S %p")
+
+				self.attendance_date = dt.strftime("%Y-%m-%d")
+				self.attendance_time = dt.strftime("%H:%M:%S")
+				type = self.type
+				code = None
+				if type == "Check In":
+					code = (1, 0)
+				if type == "Check Out":
+					code = (1, 1)
+				self.ip = "Uploaded"
+				self.attendance = f"&lt;Attendance&gt;: {self.biometric_id} : {self.attendance_date} {self.attendance_time} {code}"
+
+				# self.save()
+			except ValueError as e:
+				frappe.throw(f"Invalid date and time format: {e}")
+
+
 
 	def get_employee_attendance(self,force_update=False):
 		mon = ["January", "February", "March", "April", "May", "June", "July", 
 		"August", "September", "October", "November", "December"]
 		att_det = str(self.attendance).split()
-		d = str(att_det[3]).split("-")[1]
-		month_ = mon[int(d)-1]
+		# Validate the structure of att_det
+		if len(att_det) < 4:
+			frappe.throw(_("Invalid attendance format: Expected at least 4 elements but got {0}.").format(len(att_det)))
+
+		try:
+			d = str(att_det[3]).split("-")[1]
+			month_ = mon[int(d) - 1]
+		except (IndexError, ValueError):
+			frappe.throw(_("Invalid attendance date format in: {0}").format(att_det[3]))
+
+		# d = str(att_det[3]).split("-")[1]
+		# month_ = mon[int(d)-1]
 
 		start_date = frappe.utils.get_first_day(self.attendance_date)
 		end_date = frappe.utils.get_last_day(self.attendance_date)

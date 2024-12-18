@@ -8,6 +8,7 @@
  "field_order": [
   "attendance",
   "biometric_id",
+  "date_and_time",
   "attendance_date",
   "attendance_time",
   "type",
@@ -49,7 +50,11 @@
   {
    "fieldname": "type",
    "fieldtype": "Data",
+   "in_filter": 1,
+   "in_global_search": 1,
    "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Type"
   },
   {
@@ -57,10 +62,15 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "IP"
+  },
+  {
+   "fieldname": "date_and_time",
+   "fieldtype": "Data",
+   "label": "Date and Time"
   }
  ],
  "links": [],
- "modified": "2024-04-19 01:22:26.087527",
+ "modified": "2024-12-19 00:23:10.261187",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Attendance Logs",
