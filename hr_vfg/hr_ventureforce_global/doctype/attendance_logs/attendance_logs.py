@@ -18,16 +18,38 @@ class AttendanceLogs(TransactionBase):
 	def validate(self):
 		self.get_employee_attendance()
 		self.parse_date_and_time()
+		self.add_employee()
+
+	def add_employee(self):
+		# Fetch the employee name based on biometric_id
+		employee_data = frappe.db.sql("""
+			SELECT employee_name 
+			FROM `tabEmployee`
+			WHERE biometric_id = %s
+		""", (self.biometric_id,), as_dict=True)
+
+		# Check if a result was found
+		if employee_data:
+			self.employee = employee_data[0]['employee_name']  # Assign the first result's employee_name
+		else:
+			frappe.throw(_("No employee found with Biometric ID {0}").format(self.biometric_id))
 
 	def parse_date_and_time(self):
 
 		if self.date_and_time:
 			try:
-				dt = datetime.datetime.strptime(self.date_and_time, "%m/%d/%Y %I:%M:%S %p")
-
+				# Check if input contains AM/PM
+				if "AM" in self.date_and_time or "PM" in self.date_and_time:
+					dt = datetime.datetime.strptime(self.date_and_time, "%m/%d/%Y %I:%M %p")
+				elif "-" in self.date_and_time and ":" in self.date_and_time:
+					dt = datetime.datetime.strptime(self.date_and_time, "%m-%d-%Y %H:%M")
+				else:
+					dt = datetime.datetime.strptime(self.date_and_time, "%Y-%m-%d %H:%M:%S")
+				
 				self.attendance_date = dt.strftime("%Y-%m-%d")
 				self.attendance_time = dt.strftime("%H:%M:%S")
 				type = self.type
+				
 				code = None
 				if type == "Check In":
 					code = (1, 0)

@@ -54,7 +54,7 @@ class EmployeeAttendance(Document):
         half_day_leave = None
         self.no_of_nights = 0
         total_working_days=0
-        self.total_weekly_off = 1
+        self.total_weekly_off = 0
         present_days=0
         accun_holiday=0
         self.total_extra_duty_for_halfday = 0
@@ -187,7 +187,7 @@ class EmployeeAttendance(Document):
             return timedelta(0)
         
         for data in self.table1:
-            late += data.late
+            late += data.late or 0
         self.lates = late
 
         employee1 = frappe.get_doc("Employee",self.employee)
@@ -502,12 +502,13 @@ class EmployeeAttendance(Document):
                         time_seconds1 = time_parts[0] * 3600 + time_parts[1] * 60 + time_parts[2]
                         total_seconds1 += time_seconds1
                         print(f"Added {time_seconds1} seconds from {data.early_ot}")
-                    else:
-                        print(f"Invalid time format in early_ot: {data.early_ot}")
+                #     else:
+                #         print(f"Invalid time format in early_ot: {data.early_ot}")
                 except ValueError:
                     print(f"Error processing time format in early_ot: {data.early_ot}")
-            else:
-                print(f"early_ot is None or empty for row")
+            # else:
+                # print(f"early_ot is None or empty for row")
+                # pass
 
             # Sum estimated_late
             if data.estimated_late:
@@ -522,7 +523,8 @@ class EmployeeAttendance(Document):
                 except ValueError:
                     print(f"Error processing time format in estimated_late: {data.estimated_late}")
             else:
-                print(f"estimated_late is None or empty for row")
+                # print(f"estimated_late is None or empty for row")
+                pass
 
             # Sum estimate_early (fixed variable and print statement)
             if data.estimate_early:
@@ -537,7 +539,8 @@ class EmployeeAttendance(Document):
                 except ValueError:
                     print(f"Error processing time format in estimate_early: {data.estimate_early}")
             else:
-                print(f"estimate_early is None or empty for row")
+                pass
+                # print(f"estimate_early is None or empty for row")
             
             # Sum approved_eot
             if data.approved_eot:
@@ -552,7 +555,8 @@ class EmployeeAttendance(Document):
                 except ValueError:
                     print(f"Error processing time format in approved_eot: {data.approved_eot}")
             else:
-                print(f"approved_eot is None or empty for row")
+                pass
+                # print(f"approved_eot is None or empty for row")
 
             # total of late sitting approved 
             if data.approved_ot1:
@@ -566,7 +570,8 @@ class EmployeeAttendance(Document):
                 except ValueError:
                     print(f"Error processing time format in approved_ot1: {data.approved_ot1}")
             else:
-                print(f"approved_ot1 is None or empty for row")
+                pass
+                # print(f"approved_ot1 is None or empty for row")
             
             # total of approved early ot 
 
@@ -581,7 +586,8 @@ class EmployeeAttendance(Document):
                 except ValueError:
                     print(f"Error processing time format in approved_eot: {data.approved_eot}")
             else:
-                print(f"approved_eot is None or empty for row")
+                pass
+                # print(f"approved_eot is None or empty for row")
 
 
         # Calculate total hours after loop
@@ -590,7 +596,7 @@ class EmployeeAttendance(Document):
         self.early_sitting = "{:.2f}".format(total_seconds3 / 3600.0)
         self.approved_early_over_time_hour = "{:.2f}".format(total_seconds_approved_eot / 3600.0)
 
-        print(f"Total seconds accumulated for approved_eot: {total_seconds_approved_eot}")
+        # print(f"Total seconds accumulated for approved_eot: {total_seconds_approved_eot}")
 
         # total of late sitting and early sitting 
         total_sitting = float(self.late_sitting) + float(self.early_sitting)

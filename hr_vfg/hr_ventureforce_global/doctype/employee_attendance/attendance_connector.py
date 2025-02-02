@@ -28,7 +28,7 @@ def get_attendance_long(**args):
 		args = frappe.local.form_dict
 	"Enqueue longjob for taking backup to dropbox"
 	enqueue("hr_vfg.hr_ventureforce_global.doctype.employee_attendance.attendance_connector.execute_job", 
-	 queue='long', timeout=8000,args=args)
+	 queue='long', timeout=800000,args=args)
 	
 	frappe.msgprint(_("Queued for biometric attendance. It may take a few minutes to an hour."))
 @frappe.whitelist()

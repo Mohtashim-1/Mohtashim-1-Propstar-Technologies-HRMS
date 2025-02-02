@@ -386,25 +386,6 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "Early Over Time Employee Wise",
-   "link_count": 0,
-   "link_to": "Early Compensation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Report",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
    "is_query_report": 1,
    "label": "Monthly Attendance Register",
    "link_count": 0,
@@ -434,7 +415,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-10-01 11:35:03.857014",
+ "modified": "2025-01-28 22:27:44.736058",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "HR Addon",
@@ -443,7 +424,23 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "All"
+  },
+  {
+   "role": "Propstar HR"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Employee Attendance"
+  }
+ ],
  "sequence_id": 17.0,
  "shortcuts": [
   {

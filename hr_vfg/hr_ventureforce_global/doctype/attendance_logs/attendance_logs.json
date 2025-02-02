@@ -12,7 +12,8 @@
   "attendance_date",
   "attendance_time",
   "type",
-  "ip"
+  "ip",
+  "employee"
  ],
  "fields": [
   {
@@ -67,10 +68,16 @@
    "fieldname": "date_and_time",
    "fieldtype": "Data",
    "label": "Date and Time"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
   }
  ],
  "links": [],
- "modified": "2024-12-19 00:23:10.261187",
+ "modified": "2025-01-13 18:15:17.260907",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Attendance Logs",
