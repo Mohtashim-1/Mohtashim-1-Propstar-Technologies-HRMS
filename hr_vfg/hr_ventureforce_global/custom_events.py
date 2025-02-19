@@ -43,63 +43,136 @@ def create_salary_slips(self):
 				create_salary_slips_for_employees(employees, args, publish_progress=False)
 				# since this method is called via frm.call this doc needs to be updated manually
 				self.reload()
-				
+    
 def create_salary_slips_for_employees(employees, args, publish_progress=True):
-        salary_slips_exists_for = get_existing_salary_slips(employees, args)
-        count = 0
-        salary_slips_not_created = []
-        for emp in employees:
-            if emp not in salary_slips_exists_for:
-                e_month  = getdate(args.get("end_date")).month
-                year = getdate(args.get("end_date")).year
-                month_str  = ["January", "February", "March", "April","May","June","July","August","September","October","November","December"][e_month-1]
-                try:
-                    employee_att = frappe.get_all("Employee Attendance",
-                    filters={"month":month_str,"employee": emp,"year":year},fields=["*"])[0]
-                    
-                    args.update({
-                    "select_month": month_str,
-                    "employee_attendance": employee_att.name,
-                    # "lates": employee_att.total_lates,
-                    # "early_goings": employee_att.early_goings,
-                    # "late_sitting_hours": employee_att.late_sitting_hours,
-                    # "present_day": employee_att.present_days,
-                    # "over_times": employee_att.over_time,
-                    # "short_hours": employee_att.short_hours,
-                    # "absents": employee_att.total_absents,
-                    # "half_days": employee_att.total_half_days,
-                    # "late_adjusted_absents":int(employee_att.total_lates)/3,
-                    
-                    })
+    salary_slips_exists_for = get_existing_salary_slips(employees, args)
+    count = 0
+    salary_slips_not_created = []
+    employees_with_no_attendance = []  # List to store employees without attendance
+    
+    e_month = getdate(args.get("end_date")).month
+    year = getdate(args.get("end_date")).year
+    month_str = [
+        "January", "February", "March", "April", "May", "June", "July", "August",
+        "September", "October", "November", "December"
+    ][e_month - 1]
 
-                except:
-                    frappe.error_log(frappe.get_traceback(),"PAYROLL")
-                args.update({"doctype": "Salary Slip", "employee": emp})
-                ss = frappe.get_doc(args)
-                add_leaves(ss)
-                ss.insert()
-                count += 1
-                if publish_progress:
-                    frappe.publish_progress(
-                        count * 100 / len(set(employees) - set(salary_slips_exists_for)),
-                        title=_("Creating Salary Slips..."),
-                    )
-
-            else:
-                salary_slips_not_created.append(emp)
-
-        payroll_entry = frappe.get_doc("Payroll Entry", args.payroll_entry)
-        payroll_entry.db_set("salary_slips_created", 1)
-        payroll_entry.notify_update()
-
-        if salary_slips_not_created:
-            frappe.msgprint(
-                _(
-                    "Salary Slips already exists for employees {}, and will not be processed by this payroll."
-                ).format(frappe.bold(", ".join([emp for emp in salary_slips_not_created]))),
-                title=_("Message"),
-                indicator="orange",
+    # Check attendance for all employees before processing
+    employees_with_attendance = []
+    
+    for emp in employees:
+        if emp not in salary_slips_exists_for:
+            employee_att = frappe.get_all(
+                "Employee Attendance",
+                filters={"month": month_str, "employee": emp, "year": year},
+                fields=["name"]
             )
+            
+            if employee_att:
+                employees_with_attendance.append(emp)
+            else:
+                employees_with_no_attendance.append(emp)
+
+    # Log or display missing attendance
+    if employees_with_no_attendance:
+        missing_attendance_message = (
+            f"Salary slips cannot be created for the following employees due to missing attendance: {', '.join(employees_with_no_attendance)}"
+        )
+        frappe.msgprint(missing_attendance_message, alert=True)
+        frappe.log_error(missing_attendance_message, "Payroll Attendance Check")
+    
+    # Process only employees with attendance
+    for emp in employees_with_attendance:
+        try:
+            employee_att = frappe.get_all(
+                "Employee Attendance",
+                filters={"month": month_str, "employee": emp, "year": year},
+                fields=["*"]
+            )[0]
+
+            args.update({
+                "select_month": month_str,
+                "employee_attendance": employee_att.name,
+            })
+
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), "PAYROLL")
+            continue
+
+        args.update({"doctype": "Salary Slip", "employee": emp})
+        ss = frappe.get_doc(args)
+        add_leaves(ss)
+        ss.insert()
+        count += 1
+
+        if publish_progress:
+            frappe.publish_progress(
+                count * 100 / len(employees_with_attendance),
+                title=_("Creating Salary Slips..."),
+            )
+
+    payroll_entry = frappe.get_doc("Payroll Entry", args.payroll_entry)
+    payroll_entry.db_set("salary_slips_created", 1)
+    payroll_entry.notify_update()
+
+				
+# def create_salary_slips_for_employees(employees, args, publish_progress=True):
+#         salary_slips_exists_for = get_existing_salary_slips(employees, args)
+#         count = 0
+#         salary_slips_not_created = []
+        
+#         for emp in employees:
+#             if emp not in salary_slips_exists_for:
+#                 e_month  = getdate(args.get("end_date")).month
+#                 year = getdate(args.get("end_date")).year
+#                 month_str  = ["January", "February", "March", "April","May","June","July","August","September","October","November","December"][e_month-1]
+#                 try:
+#                     employee_att = frappe.get_all("Employee Attendance",
+#                     filters={"month":month_str,"employee": emp,"year":year},fields=["*"])[0]
+                    
+#                     args.update({
+#                     "select_month": month_str,
+#                     "employee_attendance": employee_att.name,
+#                     # "lates": employee_att.total_lates,
+#                     # "early_goings": employee_att.early_goings,
+#                     # "late_sitting_hours": employee_att.late_sitting_hours,
+#                     # "present_day": employee_att.present_days,
+#                     # "over_times": employee_att.over_time,
+#                     # "short_hours": employee_att.short_hours,
+#                     # "absents": employee_att.total_absents,
+#                     # "half_days": employee_att.total_half_days,
+#                     # "late_adjusted_absents":int(employee_att.total_lates)/3,
+                    
+#                     })
+
+#                 except:
+#                     frappe.error_log(frappe.get_traceback(),"PAYROLL")
+#                 args.update({"doctype": "Salary Slip", "employee": emp})
+#                 ss = frappe.get_doc(args)
+#                 add_leaves(ss)
+#                 ss.insert()
+#                 count += 1
+#                 if publish_progress:
+#                     frappe.publish_progress(
+#                         count * 100 / len(set(employees) - set(salary_slips_exists_for)),
+#                         title=_("Creating Salary Slips..."),
+#                     )
+
+#             else:
+#                 salary_slips_not_created.append(emp)
+
+#         payroll_entry = frappe.get_doc("Payroll Entry", args.payroll_entry)
+#         payroll_entry.db_set("salary_slips_created", 1)
+#         payroll_entry.notify_update()
+
+#         if salary_slips_not_created:
+#             frappe.msgprint(
+#                 _(
+#                     "Salary Slips already exists for employees {}, and will not be processed by this payroll."
+#                 ).format(frappe.bold(", ".join([emp for emp in salary_slips_not_created]))),
+#                 title=_("Message"),
+#                 indicator="orange",
+#             )
 
 
 

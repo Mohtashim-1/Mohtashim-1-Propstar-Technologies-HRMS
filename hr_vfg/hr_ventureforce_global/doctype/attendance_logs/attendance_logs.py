@@ -17,8 +17,25 @@ import time
 class AttendanceLogs(TransactionBase):
 	def validate(self):
 		self.get_employee_attendance()
-		self.parse_date_and_time()
+		# self.parse_date_and_time()
 		self.add_employee()
+		# self.update_logs()
+  
+
+	# def update_logs():
+	# 	biometric_id = 109
+	# 	affected_rows = frappe.db.sql("""
+	# 		UPDATE `tabAttendance Logs`
+	# 		SET ip = 2
+	# 		WHERE biometric_id = %s
+	# 	""", (biometric_id,), as_dict=False)
+
+	# 	frappe.db.commit()
+		
+	# 	if affected_rows:
+	# 		print("Rows updated:", affected_rows)
+	# 	else:
+	# 		print("No rows updated! Check if biometric_id 43 exists.")
 
 	def add_employee(self):
 		# Fetch the employee name based on biometric_id
@@ -34,33 +51,33 @@ class AttendanceLogs(TransactionBase):
 		else:
 			frappe.throw(_("No employee found with Biometric ID {0}").format(self.biometric_id))
 
-	def parse_date_and_time(self):
+	# def parse_date_and_time(self):
 
-		if self.date_and_time:
-			try:
-				# Check if input contains AM/PM
-				if "AM" in self.date_and_time or "PM" in self.date_and_time:
-					dt = datetime.datetime.strptime(self.date_and_time, "%m/%d/%Y %I:%M %p")
-				elif "-" in self.date_and_time and ":" in self.date_and_time:
-					dt = datetime.datetime.strptime(self.date_and_time, "%m-%d-%Y %H:%M")
-				else:
-					dt = datetime.datetime.strptime(self.date_and_time, "%Y-%m-%d %H:%M:%S")
+	# 	if self.date_and_time:
+	# 		try:
+	# 			# Check if input contains AM/PM
+	# 			if "AM" in self.date_and_time or "PM" in self.date_and_time:
+	# 				dt = datetime.datetime.strptime(self.date_and_time, "%m/%d/%Y %I:%M %p")
+	# 			elif "-" in self.date_and_time and ":" in self.date_and_time:
+	# 				dt = datetime.datetime.strptime(self.date_and_time, "%m-%d-%Y %H:%M")
+	# 			else:
+	# 				dt = datetime.datetime.strptime(self.date_and_time, "%Y-%m-%d %H:%M:%S")
 				
-				self.attendance_date = dt.strftime("%Y-%m-%d")
-				self.attendance_time = dt.strftime("%H:%M:%S")
-				type = self.type
+	# 			self.attendance_date = dt.strftime("%Y-%m-%d")
+	# 			self.attendance_time = dt.strftime("%H:%M:%S")
+	# 			type = self.type
 				
-				code = None
-				if type == "Check In":
-					code = (1, 0)
-				if type == "Check Out":
-					code = (1, 1)
-				self.ip = "Uploaded"
-				self.attendance = f"&lt;Attendance&gt;: {self.biometric_id} : {self.attendance_date} {self.attendance_time} {code}"
+	# 			code = None
+	# 			if type == "Check In":
+	# 				code = (1, 0)
+	# 			if type == "Check Out":
+	# 				code = (1, 1)
+	# 			self.ip = "Uploaded"
+	# 			self.attendance = f"&lt;Attendance&gt;: {self.biometric_id} : {self.attendance_date} {self.attendance_time} {code}"
 
-				# self.save()
-			except ValueError as e:
-				frappe.throw(f"Invalid date and time format: {e}")
+	# 			# self.save()
+	# 		except ValueError as e:
+	# 			frappe.throw(f"Invalid date and time format: {e}")
 
 
 
@@ -201,3 +218,20 @@ def sync_attendance(**args):
 			frappe.get_doc("Attendance Logs",item.name).get_employee_attendance()
 		except:
 			frappe.log_error(frappe.get_traceback() ,"Attendance Sync")
+   
+
+
+def update_logs():
+	biometric_id = 109
+	affected_rows = frappe.db.sql("""
+		UPDATE `tabAttendance Logs`
+		SET ip = 2
+		WHERE biometric_id = %s
+	""", (biometric_id,), as_dict=False)
+
+	frappe.db.commit()
+	
+	if affected_rows:
+		print("Rows updated:", affected_rows)
+	else:
+		print("No rows updated! Check if biometric_id 43 exists.")

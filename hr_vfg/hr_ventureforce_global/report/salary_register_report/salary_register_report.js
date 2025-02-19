@@ -43,32 +43,32 @@ frappe.query_reports["Salary Register Report"] = {
 };
 
 
-frappe.query_reports["Salary Register Report"] = {
-    formatter: function (value, row, column, data, default_formatter) {
-        // Apply the default formatter
-        value = default_formatter(value, row, column, data);
+// frappe.query_reports["Salary Register Report"] = {
+//     formatter: function (value, row, column, data, default_formatter) {
+//         // Apply the default formatter
+//         value = default_formatter(value, row, column, data);
 
-        // Highlight earnings in green
-        if (["OT Amount", "Attendance Allowance", "Punctuality Allowance", "Performance Allowance","Attendance Allowance","Puntuality Allowance","Performance Allowance"].includes(column.label)) {
-            if (data[column.fieldname] > 0) {
-                value = `<span style="color: green; font-weight: bold;">${value}</span>`;
-            }
-        }
+//         // Highlight earnings in green
+//         if (["OT Amount", "Attendance Allowance", "Punctuality Allowance", "Performance Allowance","Attendance Allowance","Puntuality Allowance","Performance Allowance"].includes(column.label)) {
+//             if (data[column.fieldname] > 0) {
+//                 value = `<span style="color: green; font-weight: bold;">${value}</span>`;
+//             }
+//         }
 
-        // Highlight deductions in red
-        if (["Advance", "Loan", "Days Ded", "Late", "Early"].includes(column.label)) {
-            if (data[column.fieldname] > 0) {
-                value = `<span style="color: red; font-weight: bold;">${value}</span>`;
-            }
-        }
+//         // Highlight deductions in red
+//         if (["Advance", "Loan", "Days Ded", "Late", "Early"].includes(column.label)) {
+//             if (data[column.fieldname] > 0) {
+//                 value = `<span style="color: red; font-weight: bold;">${value}</span>`;
+//             }
+//         }
 
-		// Highlight deductions in orange
-        if (["Net Salary"].includes(column.label)) {
-            if (data[column.fieldname] > 0) {
-                value = `<span style="color: orange; font-weight: bold;">${value}</span>`;
-            }
-        }
+// 		// Highlight deductions in orange
+//         if (["Net Salary"].includes(column.label)) {
+//             if (data[column.fieldname] > 0) {
+//                 value = `<span style="color: orange; font-weight: bold;">${value}</span>`;
+//             }
+//         }
 
-        return value;
-    },
-};
+//         return value;
+//     },
+// };

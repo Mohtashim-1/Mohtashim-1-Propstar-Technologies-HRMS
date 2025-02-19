@@ -15,12 +15,6 @@ import json
 from datetime import datetime
 from datetime import timedelta
 
-def validate(self):
-	# Ensure `machine` is defined here or modify the method to pass necessary arguments
-        hr_settings = frappe.get_single('V HR Settings')
-        for machine in hr_settings.attendance_machine:
-            # Pass args as needed along with machine details
-            self.get_checkins_checkouts(args={}, ip=machine.ip, port=machine.port, password=machine.password)
 
 @frappe.whitelist()
 def get_attendance_long(**args):
@@ -28,7 +22,7 @@ def get_attendance_long(**args):
 		args = frappe.local.form_dict
 	"Enqueue longjob for taking backup to dropbox"
 	enqueue("hr_vfg.hr_ventureforce_global.doctype.employee_attendance.attendance_connector.execute_job", 
-	 queue='long', timeout=800000,args=args)
+	 queue='long', timeout=8000,args=args)
 	
 	frappe.msgprint(_("Queued for biometric attendance. It may take a few minutes to an hour."))
 @frappe.whitelist()
@@ -150,7 +144,7 @@ def get_checkins(args=None, ip=None, port=None,password=0):
 										doc1.attendance_time= str(check_in)
 										doc1.type = "Check In"
 										doc1.ip = ip+":"+port
-										doc1.save()
+										doc1.save(ignore_permissions=True)
 							
 						except:
 							frappe.log_error(frappe.get_traceback(),"Attendance hook test")
@@ -187,6 +181,7 @@ def check_time(attend1):
 			return True, False
 
 	return False, False
+	
 def get_checkouts(args=None,ip=None, port=None,password=0):
 	conn = None
 	emp_list = [] #110.93.236.48
@@ -342,7 +337,7 @@ def get_checkouts(args=None,ip=None, port=None,password=0):
 										doc2.attendance_time= str(check_out)
 										doc2.type = "Check Out"
 										doc2.ip = '182.184.121.132:4371'
-										doc2.save()
+										doc2.save(ignore_permissions=True)
 						except:
 							frappe.log_error(frappe.get_traceback(),"Attendance hook test")
 				
@@ -354,234 +349,393 @@ def get_checkouts(args=None,ip=None, port=None,password=0):
 			conn.disconnect()
 
 
-def get_checkins_checkouts(args=None,ip=None, port=None,password=0):
-	conn = None
-	emp_list = [] #110.93.236.48
-	if not args:
-		args = {"from_date":"2023-03-01","to_date":today()}
-	if not password:
-		password = 0
-	zk = ZK(ip, port=int(port), timeout=1500, password=password, force_udp=False, ommit_ping=False)
-	frappe.log_error("Starting in/out..","Attendance hook test")
-	try:
-		conn = zk.connect()
-		if conn:
-			users = conn.get_users()
-			if users:
-				for u in users:
-					#print(u)
-					pass
 
-			attendance = conn.get_attendance()
-			print("getting attendance data")
-			#print(attendance)
-			if attendance:
-				#print(attendance)
-				
-				attendance_dict={}
-				condition1 =""
-				condition2=""
-				biometric_list=[]
-				b_filters = {}
-				if args.get("employee"):
-					condition1=" and parent in (select name from `tabEmployee Attendance` where employee='{0}')".format(args.get("employee"))
-					condition2=" and biometric_id in (select biometric_id from `tabEmployee` where name='{0}')".format(args.get("employee"))
-					b_filters["name"]=args.get("employee")
-				if args.get("department"):
-					condition1=" and parent in (select name from `tabEmployee Attendance` where department='{0}')".format(args.get("department"))
-					condition2=" and biometric_id in (select biometric_id from `tabEmployee` where department='{0}')".format(args.get("department"))
-					b_filters["department"]=args.get("department")
-				if args.get("employee") and args.get("department"):
-					condition1=" and parent in (select name from `tabEmployee Attendance` where employee='{0}' and department='{1}')".format(args.get("employee"),args.get("department"))
-					condition2=" and biometric_id in (select biometric_id from `tabEmployee` where name='{0}' and department='{1}')".format(args.get("employee"),args.get("department"))
 
-				B_r = frappe.db.get_all("Employee",filters=b_filters,fields=["biometric_id"])
-				for bid in B_r:
-					biometric_list.append(bid.biometric_id)
-				frappe.db.sql(""" delete from `tabAttendance Logs` where attendance_date >= %s and attendance_date <= %s and ip=%s {0} """.format(condition2), (args.get("from_date"),args.get("to_date"),ip+":"+port))
-				frappe.db.sql(""" update `tabEmployee Attendance Table` set check_in_1 = NULL, check_out_1=NULL, late_sitting=NULL, night_switch=0 where date >= %s and date <= %s and ip=%s and type!="Adjustment"{0} """.format(condition1), (args.get("from_date"),args.get("to_date"),ip+":"+port))
-				frappe.db.commit()
-				for attend1 in attendance:
-					if getdate(str(attend1).split()[3]) < getdate(args.get("from_date")) or getdate(str(attend1).split()[3]) > getdate(args.get("to_date")):
-						continue
-					if len(biometric_list) > 0:
-						if str(attend1).split()[1] not in biometric_list:
-							continue
-					if attendance_dict.get(str(attend1).split()[1]):
-						if attendance_dict.get(str(attend1).split()[1]).get(str(attend1).split()[3]):
-							t_biometric = str(attend1).split()[1]
-							flg = False
-							t_date = str(attend1).split()[3]
-							employee = frappe.db.get_value("Employee",{"biometric_id":t_biometric},"name")
-							shift_ass = frappe.get_all("Shift Assignment", filters={'employee': employee,
-                                                                            'start_date': ["<=", getdate(t_date)],'end_date': [">=", getdate(t_date)]}, fields=["*"])
-							if len(shift_ass) > 0:
-								shift = shift_ass[0].shift_type
-							else:
-								shift_ass = frappe.get_all("Shift Assignment", filters={'employee': employee,
-																					'start_date': ["<=", getdate(t_date)]}, fields=["*"])
-							if len(shift_ass) > 0:
-									shift = shift_ass[0].shift_type
-									shift_doc = frappe.get_doc("Shift Type", shift)
-									s_type = shift_doc.shift_type
-									t_check_out = str(attend1).split()[4]
-									t_check_out_f_f = timedelta(hours=int(t_check_out.split(":")[0]),minutes=int(t_check_out.split(":")[1]))
-									shift_start_t = timedelta(hours=int(str(shift_doc.start_time).split(":")[0]),minutes=int(str(shift_doc.start_time).split(":")[1]))
-									if t_check_out_f_f < shift_start_t:
-										prev_date = add_days(getdate(t_date),-1)
-										if attendance_dict.get(str(attend1).split()[1]).get(str(prev_date)):
-											attendance_dict.get(str(attend1).split()[1]).get(str(prev_date))["check out"]=str(attend1).split()[4]
-											attendance_dict.get(str(attend1).split()[1]).get(str(prev_date))["checkout string"]=str(attend1)
-										else:
-											attendance_dict[str(attend1).split()[1]]={
-												str(prev_date) :{
-													"check out": str(attend1).split()[4],
-													"checkout string":str(attend1)
-												}
-											}
-									else:
-										flg = True
+from zk import ZK
+from concurrent.futures import ThreadPoolExecutor
+import frappe
+from frappe import _
+from frappe.exceptions import ValidationError
 
-							else: 
-								flg = True
-							
-							if flg:
-								attendance_dict.get(str(attend1).split()[1]).get(str(attend1).split()[3])["check out"]=str(attend1).split()[4]
-								attendance_dict.get(str(attend1).split()[1]).get(str(attend1).split()[3])["checkout string"]=str(attend1)
-							print("done")
-						else:
-							attendance_dict.get(str(attend1).split()[1])[str(attend1).split()[3]]={
-								"check in": str(attend1).split()[4],
-								"checkin string":str(attend1)
-							}
-					else:
-						attendance_dict[str(attend1).split()[1]]={
-							str(attend1).split()[3] :{
-								"check in": str(attend1).split()[4],
-								"checkin string":str(attend1)
-							}
-						}
-					
-					
+# Function to get check-ins and check-outs from a single machine
+def get_checkins_checkouts(args, ip, port):
+    try:
+        # Connect to the ZK device (no password required)
+        zk = ZK(ip, port=int(port), timeout=30)
+        conn = zk.connect()
+        conn.disable_device()
 
-				import json
-				#print(attendance_dict)
-				for users in attendance_dict:
-					print(f"users{users}")
-					for dates in attendance_dict[users]:
-						try:
-							date = dates
-							check_in = attendance_dict[users][dates].get("check in")
-							check_in_string = attendance_dict[users][dates].get("checkin string")
-							# check_in_string = "attendance_dict"
-							check_out = attendance_dict[users][dates].get("check out")
-							check_out_string = attendance_dict[users][dates].get("checkout string")
-							
-							if check_in_string:
-								# Split the string based on the parentheses
-								split_string = check_in_string.split('(')
-								
-								# Get the part after the '(' and strip any unwanted characters (e.g., spaces, commas)
-								last_value = int(split_string[1].split(')')[0].strip().split(',')[-1])
+        # Fetch attendance logs
+        logs = conn.get_attendance()  # ✅ Fetch all logs at once
+        conn.enable_device()
+        conn.disconnect()
 
-								# Log the result
-								frappe.log_error(f"Last value: {date} {last_value}")
+        # Return only necessary data (employee_id and timestamp)
+        return [(log.user_id, log.timestamp) for log in logs]
 
-								# Prepare datetime strings
-								d_a = str(utils.today()) + " 8:30:00"
-								d_b = str(utils.today()) + " 1:00:00"
-								d_s = str(date + " 23:59:00")
-								d_c = str(date + " " + check_in)
-								
-								temp_chk_in = check_in
+    except Exception as e:
+        frappe.log_error(message=f"Error fetching data from {ip}:{port} - {str(e)}", title="ZK Attendance Fetch Error")
+        return []  # Return an empty list in case of error
 
-								# Check if an existing record exists in Attendance Logs
-								res = frappe.db.sql(""" 
-									SELECT name, biometric_id 
-									FROM `tabAttendance Logs` 
-									WHERE biometric_id=%s AND attendance_date=%s AND attendance_time=%s AND type='Check In'""", 
-									(users, str(date), check_in)
-								)
+# Function to fetch attendance from all machines
+def execute_job(args):
+    try:
+        # Log the arguments to help debug the issue
+        frappe.log_error(message=f"Starting attendance job with args: {args}", title="Job Arguments")
+        
+        # Validate from_date and to_date in the args
+        from_date = args.get('from_date')
+        to_date = args.get('to_date')
+        
+        if not from_date or not to_date:
+            frappe.log_error(message=f"Missing from_date or to_date: from_date={from_date}, to_date={to_date}", title="Missing Date Parameters")
+            raise ValidationError(_("Missing from_date or to_date."))
 
-								if res:
-									# Update the existing Attendance Log if found
-									atl = frappe.get_doc("Attendance Logs", res[0][0])
-									atl.save()
-								else:
-									# Add new Check In record
-									print("Adding Check In")
-									doc1 = frappe.new_doc("Attendance Logs")
-									doc1.attendance = check_in_string
-									doc1.biometric_id = users
-									doc1.attendance_date = str(date)
-									doc1.attendance_time = str(check_in)
-									
-									if last_value == '0' or last_value == 0:  # Ensure comparison is with a string '0'
-										doc1.type = "Check In"
-									else:
-										doc1.type = "Check Out"
+        # Fetch machine details from V HR Settings
+        hr_settings = frappe.get_single('V HR Settings')
+        machines = [
+            {'ip': row.ip, 'port': row.port, 'password': row.password}
+            for row in hr_settings.attendance_machine
+        ]
 
-									
-									doc1.ip = ip + ":" + port
-									doc1.save()
+        if not machines:
+            frappe.log_error(message="No machines provided for attendance fetch.", title="No Machines Provided")
+            raise ValidationError(_("No machines configured for attendance fetch."))
 
-							if check_out_string:
-								# Split the string based on the parentheses
-								split_string1 = check_out_string.split('(')
-								
-								# Get the part after the '(' and strip any unwanted characters (e.g., spaces, commas)
-								last_value1 = int(split_string1[1].split(')')[0].strip().split(',')[-1])
-								
-								# Log the last_value and other details for debugging
-								frappe.log_error(f"Last value: {date} {last_value1}")
+        # Validate cmd (command) parameter in args
+        if not args.get('cmd'):
+            frappe.log_error(message="No command provided (cmd).", title="Missing Command")
+            raise ValidationError(_("No command (cmd) provided."))
 
-								if check_in:
-									# Proceed only if the check_in exists and is valid
-									x = datetime.strptime(str(temp_chk_in), '%H:%M:%S').time()
-									y = datetime.strptime(str(check_out), '%H:%M:%S').time()
-									hi, mi, si = map(int, str(x).split(':'))
-									ho, mo, so = map(int, str(y).split(':'))
-									diff_time = timedelta(hours=0, minutes=30, seconds=0)
+        # Attempt to fetch attendance logs from all machines
+        try:
+            result = fetch_all_attendance(args, machines)
+            frappe.log_error(message=f"Attendance fetch result: {result}", title="Attendance Fetch Result")
+        except Exception as fetch_error:
+            frappe.log_error(message=f"Error in fetch_all_attendance: {str(fetch_error)}", title="Fetch Attendance Error")
+            raise ValidationError(_("Error fetching attendance logs."))
 
-									time_diff = timedelta(hours=ho, minutes=mo, seconds=so) - timedelta(hours=hi, minutes=mi, seconds=si)
-									if time_diff < diff_time:
-										continue
+        # Return the result after processing
+        frappe.log_error(message=f"Attendance job completed successfully with result: {result}", title="Job Success")
+        return result
 
-								# Check if the last_value1 equals 1 (meaning it should be a "Check Out")
-								if last_value1 == 1:
-									# Perform "Check Out" action
-									res = frappe.db.sql(""" 
-										SELECT name, biometric_id 
-										FROM `tabAttendance Logs` 
-										WHERE biometric_id=%s AND attendance_date=%s AND attendance_time=%s AND type='Check Out'""", 
-										(users, str(date), check_out)
-									)
+    except Exception as e:
+        # General exception handling for the job
+        frappe.log_error(message=f"Error in execute_job: {str(e)}", title="Execute Job Error")
+        raise ValidationError(_("Error executing attendance job."))
 
-									if res:
-										atl = frappe.get_doc("Attendance Logs", res[0][0])
-										atl.save()
-									else:
-										# Create a new "Check Out" record
-										doc2 = frappe.new_doc("Attendance Logs")
-										doc2.attendance = check_out_string
-										doc2.biometric_id = users
-										doc2.attendance_date = str(date)
-										doc2.attendance_time = str(check_out)
-										doc2.type = "Check Out"
-										doc2.ip = ip + ":" + port
-										doc2.save()
-								else:
-									frappe.log_error(f"Skipped Check Out for {date}, last_value: {last_value1}")
-						except:
-							frappe.log_error(frappe.get_traceback(),"Attendance hook test")
-				
-				
-	except Exception as e:
-		print ("Process terminate : {}"+frappe.get_traceback())
-	finally:
-		if conn:
-			conn.disconnect()
+def update_employee_attendance(biometric_id, attendance_date, attendance_time):
+    try:
+        # Debug: Log the biometric ID being processed
+        frappe.log_error(f"Processing biometric_id: {biometric_id}", "Attendance Debug")
 
+        # Fetch employee linked to biometric_id
+        employee = frappe.db.get_value("Employee", {"biometric_id": biometric_id}, "name")
+
+        # Debug: Log the employee fetch result
+        frappe.log_error(f"Employee lookup result for {biometric_id}: {employee}", "Attendance Debug")
+
+        if not employee:
+            frappe.log_error(f"Employee not found in the system for biometric_id: {biometric_id}", "Attendance Error")
+            return  # Skip if employee is not found
+
+        # Convert attendance_date to month and year
+        attendance_date_obj = datetime.strptime(attendance_date, "%d-%m-%Y")  # Fix applied here
+        month = attendance_date_obj.strftime("%B")  # Get full month name
+        year = attendance_date_obj.year  # Get year as integer
+
+        # Debug: Log extracted month and year
+        frappe.log_error(f"Extracted month and year: {month}, {year}", "Attendance Debug")
+
+        # Check if an attendance record exists for this employee in the given month & year
+        attendance = frappe.get_value(
+            "Employee Attendance", 
+            {"employee": employee, "month": month, "year": year},  
+            ["name"], 
+            as_dict=True
+        )
+
+        # Debug: Log attendance fetch result
+        frappe.log_error(f"Attendance record lookup result: {attendance}", "Attendance Debug")
+
+        if attendance:
+            # Fetch full Employee Attendance document
+            attendance_doc = frappe.get_doc("Employee Attendance", attendance["name"])
+
+            # Find matching child row for this date
+            child_row = next((row for row in attendance_doc.table1 if row.date == attendance_date), None)
+
+            if child_row:
+                # Convert current time and update check-in and check-out times
+                current_time = datetime.strptime(attendance_time, "%H:%M:%S")
+
+                # Debug: Log check-in update
+                frappe.log_error(f"Updating check-in/check-out for existing row: {child_row.name}", "Attendance Debug")
+
+                # Update check-in to the earliest time (first check-in)
+                if child_row.check_in_1:
+                    check_in_time = datetime.strptime(child_row.check_in_1, "%H:%M:%S")
+                    child_row.check_in_1 = min(check_in_time, current_time).strftime("%H:%M:%S")
+                else:
+                    child_row.check_in_1 = attendance_time  # First check-in
+
+                # Update check-out to the latest time (last check-out)
+                if child_row.check_out_1:
+                    check_out_time = datetime.strptime(child_row.check_out_1, "%H:%M:%S")
+                    child_row.check_out_1 = max(check_out_time, current_time).strftime("%H:%M:%S")
+                else:
+                    child_row.check_out_1 = attendance_time  # First check-out
+            
+
+            else:
+                # Debug: Log new row creation
+                frappe.log_error(f"Creating new child row for date: {attendance_date}", "Attendance Debug")
+
+                # Add a new row if no existing row matches the date
+                attendance_doc.append("table1", {
+                    "date": attendance_date,  
+                    "check_in_1": attendance_time,  # First check-in
+                    "check_out_1": attendance_time  # Initially same as check-in
+                })
+
+            attendance_doc.save(ignore_permissions=True)
+
+        else:
+            frappe.log_error(f"Attendance record not found, creating a new one", "Attendance Debug")
+
+            # Create a new attendance document with a child table row
+            doc = frappe.get_doc({
+                "doctype": "Employee Attendance",
+                "employee": employee,
+                "month": month,
+                "year": year,
+                "table1": [
+                    {
+                        "date": attendance_date,
+                        "check_in_1": attendance_time,  # First check-in
+                        "check_out_1": attendance_time  # Initially same as check-in
+                    }
+                ]
+            })
+            doc.insert(ignore_permissions=True)
+            doc.save()
+
+        frappe.db.commit()
+
+    except Exception as e:
+        frappe.log_error(f"Error updating attendance for {biometric_id}: {str(e)}", "Attendance Update Error")
+
+import calendar
+from datetime import datetime
+
+def is_valid_date(date_str):
+    """Check if a date string is valid and exists in the calendar."""
+    try:
+        # Parse the date string
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        # Check if the date exists in the calendar
+        year, month, day = date_obj.year, date_obj.month, date_obj.day
+        return day <= calendar.monthrange(year, month)[1]
+    except ValueError:
+        # If ValueError is raised, the date is invalid
+        return False
+
+
+import frappe
+import calendar
+from datetime import datetime
+from frappe import _ 
+from frappe.utils.background_jobs import enqueue
+
+
+@frappe.whitelist()
+def test_enqueue():
+    """Enqueue the attendance marking process to avoid timeout and enable progress tracking."""
+    enqueue(test, queue="long", timeout=9000000)  # Run in the background
+
+
+@frappe.whitelist()
+def test():
+    # Fetch all employees with a biometric ID
+    employees = frappe.db.sql("""
+        SELECT name, biometric_id FROM `tabEmployee` WHERE biometric_id IS NOT NULL and status = "Active"
+    """, as_dict=True)
+
+    if not employees:
+        frappe.log_error("No employees found with biometric IDs", "Attendance Marking Error")
+        return
+
+    for emp in employees:
+        biometric_id = emp["biometric_id"]
+        employee_name = emp["name"]
+
+        # Fetch all attendance logs for the employee
+        attendance_logs = frappe.db.sql("""
+            SELECT attendance_date, attendance_time FROM `tabAttendance Logs` 
+            WHERE biometric_id = %s 
+            ORDER BY attendance_date, attendance_time
+        """, (biometric_id,), as_dict=True)
+
+        if not attendance_logs:
+            frappe.log_error(f"No attendance logs found for biometric ID {biometric_id}", "Attendance Log Error")
+            continue  # Skip this employee and move to the next
+
+        # Group logs by (year, month)
+        logs_by_month = {}
+        for log in attendance_logs:
+            attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d")
+            month = attendance_date_obj.strftime('%B')
+            year = attendance_date_obj.year
+
+            key = (year, month)
+            if key not in logs_by_month:
+                logs_by_month[key] = []
+            logs_by_month[key].append(log)
+
+        # Process each month separately
+        for (year, month), logs in logs_by_month.items():
+            # Check if Employee Attendance exists for this month/year
+            attendance_doc_name = frappe.db.get_value(
+                "Employee Attendance", {"employee": employee_name, "month": month, "year": year}, "name"
+            )
+
+            if attendance_doc_name:
+                attendance_doc = frappe.get_doc("Employee Attendance", attendance_doc_name)
+            else:
+                attendance_doc = frappe.get_doc({
+                    "doctype": "Employee Attendance",
+                    "employee": employee_name,
+                    "month": month,
+                    "year": year
+                })
+                num_days_in_month = calendar.monthrange(year, datetime.strptime(month, '%B').month)[1]
+                
+                # Pre-fill attendance table for all days in the month
+                for day in range(1, num_days_in_month + 1):
+                    date_str = f"{year}-{datetime.strptime(month, '%B').month:02d}-{day:02d}"
+                    attendance_doc.append("table1", {
+                        "date": date_str,
+                        "check_in_1": None,
+                        "check_out_1": None
+                    })
+
+            # Update attendance records in the respective month
+            for log in logs:
+                attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d")
+                attendance_time = log["attendance_time"]
+
+                # Find the correct row for this date
+                child_row = next((row for row in attendance_doc.table1 if row.date == log["attendance_date"]), None)
+
+                if child_row:
+                    current_time = datetime.strptime(attendance_time, "%H:%M:%S")
+
+                    # Update check-in (earliest time)
+                    if child_row.check_in_1:
+                        check_in_time = datetime.strptime(child_row.check_in_1, "%H:%M:%S")
+                        child_row.check_in_1 = min(check_in_time, current_time).strftime("%H:%M:%S")
+                    else:
+                        child_row.check_in_1 = attendance_time  # First check-in
+
+                    # Update check-out (latest time)
+                    if child_row.check_out_1:
+                        check_out_time = datetime.strptime(child_row.check_out_1, "%H:%M:%S")
+                        child_row.check_out_1 = max(check_out_time, current_time).strftime("%H:%M:%S")
+                    else:
+                        child_row.check_out_1 = attendance_time  # First check-out
+
+            if not attendance_doc_name:
+                attendance_doc.insert(ignore_permissions=True)  # Insert only if it's a new document
+            else:
+                attendance_doc.save(ignore_permissions=True)  # Save if it's an existing document
+
+    frappe.db.commit()  # Commit all changes at once
+    frappe.log_error("Attendance processing completed for all employees", "Attendance Log")
+
+from collections import defaultdict
+from datetime import datetime
+
+def fetch_all_attendance(args, machines):
+    try:
+        # Log machines being used for parallel fetching
+        frappe.log_error(message=f"Machines being used: {machines}", title="Machines for Fetching Attendance")
+
+        # Execute attendance fetching in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=len(machines)) as executor:
+            # Fetch data from each machine in parallel
+            all_logs = list(executor.map(lambda m: get_checkins_checkouts(args, m['ip'], m['port']), machines))
+
+        # Flatten the list of logs from all machines
+        all_logs = [log for logs in all_logs for log in logs]
+
+        # Ensure all logs have the correct structure (employee_id, timestamp)
+        if not all_logs:
+            frappe.log_error(message="No attendance logs found to insert.", title="No Logs Found")
+            raise ValidationError(_("No attendance logs found to insert."))
+
+        # Group logs by employee and date
+        logs_by_employee_and_date = defaultdict(lambda: defaultdict(list))
+        for log in all_logs:
+            biometric_id, timestamp = log
+            attendance_date = timestamp.date()
+            logs_by_employee_and_date[biometric_id][attendance_date].append(timestamp)
+
+        # Format the logs for insertion into the database
+        formatted_logs = []
+        for biometric_id, dates in logs_by_employee_and_date.items():
+            for attendance_date, timestamps in dates.items():
+                # Sort timestamps for the day
+                timestamps.sort()
+
+                # Assign log types
+                for i, timestamp in enumerate(timestamps):
+                    if i == 0:
+                        log_type = "Check In"  # First log of the day
+                    elif i == len(timestamps) - 1:
+                        log_type = "Check Out"  # Last log of the day
+                    else:
+                        continue  # Skip intermediate logs (optional)
+
+                    attendance_time = timestamp.time()
+
+                    # Format the attendance string
+                    attendance = f"<Attendance>: {biometric_id} : {attendance_date} {attendance_time} (1, 0)"
+
+                    formatted_logs.append({
+                        "biometric_id": biometric_id,
+                        "attendance_date": attendance_date,
+                        "attendance_time": attendance_time,
+                        "type": log_type,  # Assign log type (Check In/Check Out)
+                        "ip": "Machine_IP",  # This can be dynamic if you need to store the machine IP
+                        "attendance": attendance  # The correctly formatted attendance field
+                    })
+                    
+        # update_employee_attendance(biometric_id, attendance_date, attendance_time)
+        # mark_employee_attendance()
+
+        # Bulk insert into the Attendance Logs doctype
+        try:
+            frappe.db.bulk_insert(
+                "Attendance Logs", 
+                fields=["name", "biometric_id", "attendance_date", "attendance_time", "type", "ip", "attendance"], 
+                values=[
+                    (frappe.generate_hash(length=10), log["biometric_id"], log["attendance_date"], log["attendance_time"], log["type"], log["ip"], log["attendance"])
+                    for log in formatted_logs
+                ]
+            )
+
+            frappe.log_error(message=f"Inserted {len(formatted_logs)} records successfully.", title="Bulk Insert Success")
+            
+            return f"Inserted {len(formatted_logs)} records successfully"
+
+        except Exception as e:
+            frappe.log_error(message=f"Error during bulk insert of attendance logs: {str(e)}", title="Bulk Insert Error")
+            raise ValidationError(_("Error inserting attendance logs into the database."))
+
+    except Exception as e:
+        frappe.log_error(message=f"Error in fetch_all_attendance: {str(e)}", title="Fetch Attendance Error")
+        raise ValidationError(_("Error fetching attendance logs."))
+    
 
 @frappe.whitelist()
 def get_attendance_from_api(date):
@@ -663,4 +817,4 @@ def email_report():
 		auto_email_report.save()
 		send_now("Daily Attendance")
 
-	
+		

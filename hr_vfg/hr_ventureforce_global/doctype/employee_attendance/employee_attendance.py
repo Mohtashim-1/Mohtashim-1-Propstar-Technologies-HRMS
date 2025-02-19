@@ -259,7 +259,9 @@ class EmployeeAttendance(Document):
                     if len(shift_ass) > 0:
                         shift = shift_ass[0].shift_type
                     else:
-                        frappe.throw(_("No shift available for this employee {0}").format(self.employee))
+                        pass
+                        # frappe.throw(_("No shift available for this employee {0}").format(self.employee))
+                        # frappe.throw(_("No shift available for this employee {0}").format(self.employee))
                     
                     # Set the shift type in data
                     data.shift = shift
@@ -1463,9 +1465,7 @@ class EmployeeAttendance(Document):
                                 otc.formula,
                                 otc.per_hour_calculation,
                                 otc.over_time_threshold,
-                                otc.fixed_hour,
-                                otc.maximum_over_time_limit_in_hours
-                                                               
+                                otc.fixed_hour
                             FROM 
                                 `tabOver Time Slab` as ots
                             LEFT JOIN 
@@ -1557,12 +1557,12 @@ class EmployeeAttendance(Document):
                         
                         if over_time_slab_doc:
                             for record in over_time_slab_doc:
-
                                 data.over_time_type = record.type
                                 data.per_hours_calculation = record.per_hour_calculation
                                 data.over_time_amount = record.formula
                                 threshould = record.over_time_threshold
-                                max_limit_ot1 = record.maximum_over_time_limit_in_hours
+                                required_hours = record.required_hours
+                                max_limit_ot = record.maximum_over_time_limit_in_hours
 
                                 if isinstance(record.from_time, timedelta):
                                     record.from_time = (datetime.min + record.from_time).time()
@@ -1575,6 +1575,25 @@ class EmployeeAttendance(Document):
                                         shift_time = datetime.strptime(data.shift_out, "%H:%M:%S").time()
                                     elif isinstance(data.shift_out, timedelta):
                                         shift_time = (datetime.min + data.shift_out).time()
+                                
+                                if data.shift_in is not None:
+                                    if isinstance(data.shift_in, str):
+                                        shift_in_time = datetime.strptime(data.shift_in, "%H:%M:%S").time()
+                                    elif isinstance(data.shift_in, timedelta):
+                                        shift_in_time = (datetime.min + data.shift_in).time()
+
+                                if required_hours is not None:
+                                    if isinstance(required_hours, str):
+                                        # Convert to timedelta if stored as a time string in 'hh:mm:ss' format
+                                        hours, minutes, seconds = map(int, required_hours.split(':'))
+                                        required_hours = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                                    elif type(required_hours) is time:
+                                        # Convert `time` to `timedelta`
+                                        required_hours = timedelta(hours=required_hours.hour, minutes=required_hours.minute, seconds=required_hours.second)
+                                    elif type(required_hours) is timedelta:
+                                        required_hours = required_hours  # Already a timedelta
+                                    else:
+                                        raise ValueError("Unsupported type for required_hours")
                                 
 
                                 if check_out_1_time is not None:
@@ -1590,23 +1609,44 @@ class EmployeeAttendance(Document):
                                     elif isinstance(check_out_1_time, timedelta):
                                         # Convert timedelta to time
                                         check_out_1_time = (datetime.min + check_out_1_time).time()
+
+                                if data.total_time is not None and data.total_time != '':
+                                    if isinstance(data.total_time, str):
+                                        # Convert to timedelta if stored as a time string in 'hh:mm:ss' format
+                                        hours, minutes, seconds = map(int, data.total_time.split(':'))
+                                        total_time1 = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                                    elif isinstance(data.total_time, time):
+                                        # Convert `time` to `timedelta`
+                                        total_time1 = timedelta(hours=data.total_time.hour, minutes=data.total_time.minute, seconds=data.total_time.second)
+                                    elif isinstance(data.total_time, timedelta):
+                                        total_time1 = data.total_time  # Already a timedelta
+                                    else:
+                                        raise ValueError("Unsupported type for total_time")
                                     
 
                                     # if isinstance(check_out_1_time, time):   
-                                    if record.type == "Weekday":
-                                            if check_out_1_time < shift_time:
-                                                data.early = 1
-                                                # Convert both times to datetime objects to calculate the difference
-                                                check_out_datetime = datetime.combine(datetime.today(), check_out_1_time)
-                                                shift_datetime = datetime.combine(datetime.today(), shift_time)
-                                                
-                                                # Calculate the early going hours as a timedelta
-                                                early_going_timedelta = shift_datetime - check_out_datetime
-                                                
-                                                # Store the result as hours, minutes, and seconds in early_going_hours
-                                                data.early_going_hours = str(early_going_timedelta)
+                                    if record.type == "Weekday" and check_out_1_time and shift_time and shift_in_time:
+                                            # if check_out_1_time < shift_time and check_out_1_time > shift_in_time:
+                                            #         data.early = 1
+                                            #         # Convert both times to datetime objects to calculate the difference
+                                            #         check_out_datetime = datetime.combine(datetime.today(), check_out_1_time)
+                                            #         shift_datetime = datetime.combine(datetime.today(), shift_time)
+                                            #         shift_in_datetime = datetime.combine(datetime.today(), shift_in_time)
+                                                    
+                                            #         # Calculate the early going hours as a timedelta
+                                            #         early_going_timedelta = shift_datetime - check_out_datetime
+                                                    
+                                            #         # Store the result as hours, minutes, and seconds in early_going_hours
+                                            #         data.early_going_hours = str(early_going_timedelta)
+                                            # else:
+                                            #     data.early_going_hours = ""
+                                            #     data.early = 0
+                                            #     data.estimated_late = "1"
 
-                                        
+
+                                    
+
+                                            
 
                                             if record.from_time > record.to_time:
                                                 # Shift crosses midnight
@@ -1614,8 +1654,10 @@ class EmployeeAttendance(Document):
                                                 if check_out_1_time >= record.from_time or check_out_1_time <= record.to_time:
                                                     if isinstance(threshould, timedelta):
                                                         threshold_timedelta = threshould
+                                                        data.estimated_late = "2"
                                                     else:
                                                         threshold_timedelta = timedelta(hours=float(threshould))
+                                                        data.estimated_late = "2"
 
                                                     # data.estimated_late = "difference_str1"
                                                     
@@ -1660,26 +1702,18 @@ class EmployeeAttendance(Document):
                                                         hours = time_delta_difference // 3600
                                                         minutes = (time_delta_difference % 3600) // 60
                                                         seconds = time_delta_difference % 60
-                                                        if hours > max_limit_ot1:
-                                                            hours = max_limit_ot1
-                                                            minutes = 00
-                                                            seconds = 00
-
-                                                        if hours == max_limit_ot1:
-                                                            hours = max_limit_ot1
-                                                            minutes = 00
-                                                            seconds = 00
                                                         
                                                         overtime_round_off = hr_settings.overtime_round_off
-                                                        if overtime_round_off == 1:
-                                                            if minutes >= 30:
-                                                                minutes = 30
-                                                            else: 
-                                                                minutes = 00
-                                                            if seconds >= 30:
-                                                                seconds = 30
-                                                            else:
-                                                                seconds = 00
+                                                        if data.difference1 != "00:00:00":
+                                                            if overtime_round_off == 1:
+                                                                if minutes >= 30:
+                                                                    minutes = 30
+                                                                else: 
+                                                                    minutes = 00
+                                                                if seconds >= 30:
+                                                                    seconds = 00
+                                                                else:
+                                                                    seconds = 00
 
                                                         # Format the result as a string in hh:mm:ss format
                                                         difference_str1 = f"{hours}:{minutes:02}:{seconds:02}"
@@ -1701,6 +1735,8 @@ class EmployeeAttendance(Document):
                                             # elif check_out_1_time > record.from_time:
                                             #         data.estimated_late = "str1"
                                             else:
+                                                data.estimated_late = "str1"
+                                                
                                                 if isinstance(check_out_1_time, datetime):
                                                     check_out_1_time = check_out_1_time.time()
                                                 # check_out_1_time = check_out_1_time.time()
@@ -1710,8 +1746,10 @@ class EmployeeAttendance(Document):
                                                         threshold_timedelta = timedelta(hours=0)  # Default to zero hours if None
                                                     elif isinstance(threshould, timedelta):
                                                         threshold_timedelta = threshould  # Already a timedelta, no need to convert
+                                                        data.estimated_late = "str2"
                                                     else:
                                                         threshold_timedelta = timedelta(hours=float(threshould))
+                                                        data.estimated_late = "str3"
 
 
 
@@ -1719,12 +1757,15 @@ class EmployeeAttendance(Document):
                                                         # Convert timedelta to total hours
                                                         threshold_hours = threshould.total_seconds() / 3600
                                                         threshold_timedelta = timedelta(hours=threshold_hours)
+                                                        data.estimated_late = "str4"
                                                     elif isinstance(threshould, (int, float, str)) and threshould != '':
                                                         # Convert string/int/float to timedelta
                                                         threshold_timedelta = timedelta(hours=float(threshould))
+                                                        data.estimated_late = "str5"
                                                     else:
                                                         # Handle None or invalid values
                                                         threshold_timedelta = timedelta(hours=0)
+                                                        data.estimated_late = "str6"
 
                                                     # if threshould is not None:
                                                     #     threshold_timedelta = timedelta(hours=threshould)
@@ -1736,6 +1777,7 @@ class EmployeeAttendance(Document):
                                                     if time_difference_delta >= threshold_timedelta:
                                                         # Store OTC name
                                                         data.data = record.otc_name
+                                                        data.estimated_late = "str7"
 
                                                         # Handle fixed hour logic dynamically
                                                         # frappe.log_error(f"Value of fixed_hour: {record.fixed_hour} (Type: {type(record.fixed_hour)})")
@@ -1744,15 +1786,19 @@ class EmployeeAttendance(Document):
                                                         if record.fixed_hour is not None:
                                                             # Check if fixed_hour is a timedelta object
                                                             if isinstance(record.fixed_hour, timedelta):
+                                                                data.estimated_late = "str9"
                                                                 fixed_hour_timedelta = record.fixed_hour  # Use it directly as it's already timedelta
                                                                 # frappe.log_error(f"Fixed hour timedelta used directly: {fixed_hour_timedelta}")
                                                             else:
                                                                 # frappe.log_error(f"fixed_hour is not a timedelta object, defaulting to 0")
-                                                                fixed_hour_timedelta = timedelta(0)  # Default to 0 if it's not a timedelta
+                                                                fixed_hour_timedelta = timedelta(0)
+                                                                data.estimated_late = "stf1"
+                                                                # Default to 0 if it's not a timedelta
                                                         else:
                                                             pass
                                                             # frappe.log_error(f"fixed_hour is None, defaulting to 0")
                                                             fixed_hour_timedelta = timedelta(0)
+                                                            data.estimated_late = "stf2"
 
 
                                                         # Evaluate per hour calculation
@@ -1775,33 +1821,39 @@ class EmployeeAttendance(Document):
                                                         minutes = (time_delta_difference % 3600) // 60
                                                         seconds = time_delta_difference % 60
 
-                                                        # Format the time as hh:mm:ss
-                                                        difference_str1 = f"{hours:02}:{minutes:02}:{seconds:02}"
-                                                        if hours > max_limit_ot1:
-                                                            hours = max_limit_ot1
-                                                            minutes = 00
-                                                            seconds = 00
+                                                        # if hours >= max_limit_ot:
+                                                        #     hours = max_limit_ot
+                                                        #     minutes = 00
+                                                        #     seconds = 00
+                                                        # elif hours == max_limit_ot:
+                                                        #     hours = max_limit_ot
+                                                        #     minutes = 00
+                                                        #     seconds = 00
+                                                        # else:
+                                                        #     hours
+                                                        #     minutes
+                                                        #     seconds
 
-                                                        if hours == max_limit_ot1:
-                                                            hours = max_limit_ot1
-                                                            minutes = 00
-                                                            seconds = 00
-                                                        
+
                                                         overtime_round_off = hr_settings.overtime_round_off
-                                                        if overtime_round_off == 1:
-                                                            if minutes >= 30:
-                                                                minutes = 30
-                                                            else: 
-                                                                minutes = 00
-                                                            if seconds >= 30:
-                                                                seconds = 30
-                                                            else:
-                                                                seconds = 00
+                                                        if data.difference1 != "00:00:00":
+                                                            if overtime_round_off == 1:
+                                                                if minutes >= 30:
+                                                                    minutes = 30
+                                                                else: 
+                                                                    minutes = 00
+                                                                if seconds >= 30:
+                                                                    seconds = 30
+                                                                else:
+                                                                    seconds = 00
 
-                                                        # Format the result as a string in hh:mm:ss format
+                                                        # if total_time1 > required_hours:
                                                         difference_str1 = f"{hours}:{minutes:02}:{seconds:02}"
                                                         data.estimated_late = difference_str1
-                                                        # data.estimated_late = "difference_str1"
+
+                                                        # Format the time as hh:mm:ss
+                                                        # difference_str1 = f"{hours:02}:{minutes:02}:{seconds:02}"
+                                                        # data.estimated_late = difference_str1
                                                         
                                                         # Combined log message
                                                         # log_message = (
@@ -1810,10 +1862,11 @@ class EmployeeAttendance(Document):
                                                         #     f"Total Hours (Before Calculation): {time_difference_delta.total_seconds() / 3600:.2f} hours, "
                                                         #     f"Estimated Late Calculation: {data.estimated_late}"
                                                         # )
+                                                    else:
+                                                        data.estimated_late = threshold_timedelta
                                     else:
                                         pass
 
-                                    
 
                                     # if data.day_type == "Weekly Off":
                                     #     shift_out_str = data.shift_out  # Example: "18:00:00"
@@ -2421,7 +2474,8 @@ class EmployeeAttendance(Document):
                             self.approved_overtime_le = 0
                 
                 else:
-                    raise ValueError(f"No Shift Found for these employee: {self.employee}")
+                    pass
+                    # raise ValueError(f"No Shift Found for these employee: {self.employee}")
                 
                 
                 

@@ -95,6 +95,7 @@ def get_data(filters):
         lsld = int(early + short)
         early = int(early)
         late = int(late)
+        abse = int(abse)
 
         # Append the row
         row = [
@@ -107,7 +108,7 @@ def get_data(filters):
 			int(doc.custom_half_day),
 			int(doc.custom_absents),
 			int(doc.custom_total_late),
-			int(doc.custom_early),
+			int(doc.custom_absents),
             int(doc.basic_salary),
             int(doc.gross_pay),
             int(doc.custom_weekends_half_day + doc.custom_weekend_days),
@@ -117,7 +118,7 @@ def get_data(filters):
             int(0),  # Performance Allowance not defined
             int(adv),
             int(loan),
-            ladd,
+            abse,
             int(late),
             int(early),
             int(doc.rounded_total),
