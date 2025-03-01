@@ -424,106 +424,105 @@ def execute_job(args):
         frappe.log_error(message=f"Error in execute_job: {str(e)}", title="Execute Job Error")
         raise ValidationError(_("Error executing attendance job."))
 
-def update_employee_attendance(biometric_id, attendance_date, attendance_time):
+import frappe
+from datetime import datetime
+import frappe
+from datetime import datetime
+import frappe
+from datetime import datetime
+
+import frappe
+from datetime import datetime
+
+def update_all_employee_attendance():
+    from_date = "2025-02-01"
+    to_date = "2025-02-20"
+
     try:
-        # Debug: Log the biometric ID being processed
-        frappe.log_error(f"Processing biometric_id: {biometric_id}", "Attendance Debug")
+        # Fetch all employees who have a biometric_id
+        employees = frappe.db.sql("""
+            SELECT name, biometric_id FROM `tabEmployee` 
+            WHERE biometric_id IS NOT NULL AND biometric_id != ''
+        """, as_dict=True)
 
-        # Fetch employee linked to biometric_id
-        employee = frappe.db.get_value("Employee", {"biometric_id": biometric_id}, "name")
+        if not employees:
+            frappe.log_error("No employees found with biometric IDs", "Attendance Error")
+            return  
 
-        # Debug: Log the employee fetch result
-        frappe.log_error(f"Employee lookup result for {biometric_id}: {employee}", "Attendance Debug")
+        for emp in employees:
+            employee = emp["name"]
+            biometric_id = emp["biometric_id"]
 
-        if not employee:
-            frappe.log_error(f"Employee not found in the system for biometric_id: {biometric_id}", "Attendance Error")
-            return  # Skip if employee is not found
+            # Debug: Log the employee being processed
+            frappe.log_error(f"Processing Employee: {employee} (Biometric ID: {biometric_id})", "Attendance Debug")
 
-        # Convert attendance_date to month and year
-        attendance_date_obj = datetime.strptime(attendance_date, "%d-%m-%Y")  # Fix applied here
-        month = attendance_date_obj.strftime("%B")  # Get full month name
-        year = attendance_date_obj.year  # Get year as integer
+            # Fetch logs only for this employee
+            logs = frappe.db.sql("""
+                SELECT 
+                    attendance_date, 
+                    MIN(attendance_time) AS first_check_in, 
+                    MAX(attendance_time) AS last_check_out
+                FROM `tabAttendance Logs`
+                WHERE attendance_date BETWEEN %s AND %s
+                AND biometric_id = %s  -- Filter for this employee
+                GROUP BY attendance_date
+                ORDER BY attendance_date ASC
+            """, (from_date, to_date, biometric_id), as_dict=True)
 
-        # Debug: Log extracted month and year
-        frappe.log_error(f"Extracted month and year: {month}, {year}", "Attendance Debug")
+            if not logs:
+                frappe.log_error(f"No logs found for biometric_id: {biometric_id}", "Attendance Debug")
+                continue  # Skip to the next employee
 
-        # Check if an attendance record exists for this employee in the given month & year
-        attendance = frappe.get_value(
-            "Employee Attendance", 
-            {"employee": employee, "month": month, "year": year},  
-            ["name"], 
-            as_dict=True
-        )
+            for log in logs:
+                attendance_date = log["attendance_date"]
+                first_check_in = log["first_check_in"]
+                last_check_out = log["last_check_out"]
 
-        # Debug: Log attendance fetch result
-        frappe.log_error(f"Attendance record lookup result: {attendance}", "Attendance Debug")
+                # Convert date format to match Employee Attendance child table
+                attendance_date_obj = datetime.strptime(str(attendance_date), "%Y-%m-%d")
+                formatted_date = attendance_date_obj.strftime("%d-%m-%Y")  
 
-        if attendance:
-            # Fetch full Employee Attendance document
-            attendance_doc = frappe.get_doc("Employee Attendance", attendance["name"])
+                # Extract month and year
+                month = attendance_date_obj.strftime("%B")  
+                year = attendance_date_obj.year  
 
-            # Find matching child row for this date
-            child_row = next((row for row in attendance_doc.table1 if row.date == attendance_date), None)
+                # Debug log
+                frappe.log_error(f"Processing Attendance for {employee} on {formatted_date} - {month}, {year}", "Attendance Debug")
 
-            if child_row:
-                # Convert current time and update check-in and check-out times
-                current_time = datetime.strptime(attendance_time, "%H:%M:%S")
+                # Fetch Employee Attendance record
+                attendance = frappe.db.get_value(
+                    "Employee Attendance", 
+                    {"employee": employee, "month": month, "year": year},  
+                    ["name"]
+                )
 
-                # Debug: Log check-in update
-                frappe.log_error(f"Updating check-in/check-out for existing row: {child_row.name}", "Attendance Debug")
+                if attendance:
+                    attendance_doc = frappe.get_doc("Employee Attendance", attendance)
 
-                # Update check-in to the earliest time (first check-in)
-                if child_row.check_in_1:
-                    check_in_time = datetime.strptime(child_row.check_in_1, "%H:%M:%S")
-                    child_row.check_in_1 = min(check_in_time, current_time).strftime("%H:%M:%S")
+                    # Ensure the date format in the child table matches
+                    child_row = next((row for row in attendance_doc.table1 
+                                      if row.date.strftime("%d-%m-%Y") == formatted_date), None)
+
+                    if child_row:
+                        # Debugging Log - Before Updating
+                        frappe.log_error(f"Before Update: {formatted_date} | Check-in: {child_row.check_in_1} | Check-out: {child_row.check_out_1}", "Attendance Debug")
+
+                        # ✅ Update logs
+                        child_row.check_in_1 = first_check_in
+                        child_row.check_out_1 = last_check_out
+                        attendance_doc.save()
+                        frappe.db.commit()
+
+                        # Debugging Log - After Updating
+                        frappe.log_error(f"Updated check-in/out for {employee} on {formatted_date} | New Check-in: {first_check_in} | New Check-out: {last_check_out}", "Attendance Debug")
+                    else:
+                        frappe.log_error(f"No matching row found for {formatted_date}, skipping update.", "Attendance Debug")
+
                 else:
-                    child_row.check_in_1 = attendance_time  # First check-in
-
-                # Update check-out to the latest time (last check-out)
-                if child_row.check_out_1:
-                    check_out_time = datetime.strptime(child_row.check_out_1, "%H:%M:%S")
-                    child_row.check_out_1 = max(check_out_time, current_time).strftime("%H:%M:%S")
-                else:
-                    child_row.check_out_1 = attendance_time  # First check-out
-            
-
-            else:
-                # Debug: Log new row creation
-                frappe.log_error(f"Creating new child row for date: {attendance_date}", "Attendance Debug")
-
-                # Add a new row if no existing row matches the date
-                attendance_doc.append("table1", {
-                    "date": attendance_date,  
-                    "check_in_1": attendance_time,  # First check-in
-                    "check_out_1": attendance_time  # Initially same as check-in
-                })
-
-            attendance_doc.save(ignore_permissions=True)
-
-        else:
-            frappe.log_error(f"Attendance record not found, creating a new one", "Attendance Debug")
-
-            # Create a new attendance document with a child table row
-            doc = frappe.get_doc({
-                "doctype": "Employee Attendance",
-                "employee": employee,
-                "month": month,
-                "year": year,
-                "table1": [
-                    {
-                        "date": attendance_date,
-                        "check_in_1": attendance_time,  # First check-in
-                        "check_out_1": attendance_time  # Initially same as check-in
-                    }
-                ]
-            })
-            doc.insert(ignore_permissions=True)
-            doc.save()
-
-        frappe.db.commit()
+                    frappe.log_error(f"No Employee Attendance record found for {employee} in {month} {year}, skipping update.", "Attendance Debug")
 
     except Exception as e:
-        frappe.log_error(f"Error updating attendance for {biometric_id}: {str(e)}", "Attendance Update Error")
+        frappe.log_error(f"Error updating attendance: {str(e)}", "Attendance Update Error")
 
 import calendar
 from datetime import datetime
@@ -552,13 +551,15 @@ from frappe.utils.background_jobs import enqueue
 def test_enqueue():
     """Enqueue the attendance marking process to avoid timeout and enable progress tracking."""
     enqueue(test, queue="long", timeout=9000000)  # Run in the background
-
+import frappe
+import calendar
+from datetime import datetime, date
 
 @frappe.whitelist()
 def test():
     # Fetch all employees with a biometric ID
     employees = frappe.db.sql("""
-        SELECT name, biometric_id FROM `tabEmployee` WHERE biometric_id IS NOT NULL and status = "Active"
+        SELECT name, biometric_id FROM `tabEmployee` WHERE biometric_id IS NOT NULL AND status = "Active"
     """, as_dict=True)
 
     if not employees:
@@ -583,7 +584,14 @@ def test():
         # Group logs by (year, month)
         logs_by_month = {}
         for log in attendance_logs:
-            attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d")
+            attendance_date_str = log["attendance_date"]
+
+            # Ensure correct date format handling
+            if isinstance(log["attendance_date"], date):
+                attendance_date_obj = log["attendance_date"]
+            else:
+                attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d").date()
+
             month = attendance_date_obj.strftime('%B')
             year = attendance_date_obj.year
 
@@ -594,7 +602,7 @@ def test():
 
         # Process each month separately
         for (year, month), logs in logs_by_month.items():
-            # Check if Employee Attendance exists for this month/year
+            # Check if Employee Attendance already exists for this month/year
             attendance_doc_name = frappe.db.get_value(
                 "Employee Attendance", {"employee": employee_name, "month": month, "year": year}, "name"
             )
@@ -621,11 +629,15 @@ def test():
 
             # Update attendance records in the respective month
             for log in logs:
-                attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d")
+                if isinstance(log["attendance_date"], date):
+                    attendance_date_obj = log["attendance_date"]
+                else:
+                    attendance_date_obj = datetime.strptime(log["attendance_date"], "%Y-%m-%d").date()
+
                 attendance_time = log["attendance_time"]
 
                 # Find the correct row for this date
-                child_row = next((row for row in attendance_doc.table1 if row.date == log["attendance_date"]), None)
+                child_row = next((row for row in attendance_doc.table1 if row.date == str(attendance_date_obj)), None)
 
                 if child_row:
                     current_time = datetime.strptime(attendance_time, "%H:%M:%S")

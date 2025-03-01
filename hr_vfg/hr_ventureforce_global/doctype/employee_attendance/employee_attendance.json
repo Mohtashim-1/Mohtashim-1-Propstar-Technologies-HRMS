@@ -20,6 +20,12 @@
   "biometric_id",
   "company",
   "designation",
+  "section_break_wvys",
+  "shift_present_threshould",
+  "column_break_qkcg",
+  "shift_absent_threshould",
+  "column_break_hsgp",
+  "shift_half_day_threshould_copy",
   "section_break_5",
   "table1",
   "section_break_7",
@@ -710,11 +716,38 @@
    "fieldname": "allowance_",
    "fieldtype": "Float",
    "label": "Allowance %"
+  },
+  {
+   "fieldname": "section_break_wvys",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "shift_present_threshould",
+   "fieldtype": "Data",
+   "label": "Shift Present Threshould"
+  },
+  {
+   "fieldname": "column_break_qkcg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shift_absent_threshould",
+   "fieldtype": "Data",
+   "label": "Shift Absent Threshould "
+  },
+  {
+   "fieldname": "column_break_hsgp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shift_half_day_threshould_copy",
+   "fieldtype": "Data",
+   "label": "Shift Half Day Threshould Copy"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2024-11-04 13:59:10.651106",
+ "modified": "2025-02-21 12:55:52.114659",
  "modified_by": "Administrator",
  "module": "HR VentureForce Global",
  "name": "Employee Attendance",

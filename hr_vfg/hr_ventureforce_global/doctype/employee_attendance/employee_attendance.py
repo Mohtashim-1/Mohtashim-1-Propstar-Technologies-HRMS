@@ -118,7 +118,7 @@ class EmployeeAttendance(Document):
         absent_threshould_weekly_off = 0
         half_day_threshould_weekly_off = 0
         present_threshould_weekly_off = 0
-
+        manual = 0
         self.weekend_half_day = 0
         self.weekend_absent = 0
         self.weekend_present = 0
@@ -129,6 +129,174 @@ class EmployeeAttendance(Document):
 
         # Dictionary to map month names to numbers
         # Dictionary to map month names to numbers
+        
+        # Initialize manual_absent before the loop
+        self.manual_absent = 0  
+        
+        holiday_dates = {str(getdate(d.holiday_date)) for d in holidays}  # Ensure correct format
+
+        for data in self.table1:
+            if data.check_in_1 == data.check_out_1:
+                data.check_out_1 = None
+            data_date = str(getdate(data.date))  # Ensure consistency
+
+            # frappe.errprint(f"Checking {data_date} against holidays {holiday_dates}")
+
+            # Step 1: Mark Weekly Off based on holiday list
+            if data_date in holiday_dates:  # If it is a holiday
+                data.weekly_off = 1
+                self.total_weekly_off += 1
+                # data.absent_due_to_below_threshould = 0  # Ensure it's not marked as absent on holidays
+            else:  # If not a holiday
+                data.weekly_off = 0
+                # frappe.errprint(f"Date: {data_date}, Weekly Off: {data.weekly_off}, Absent: {data.absent_due_to_below_threshould}")
+
+                # Step 2: Mark Absent if both check-in & check-out are missing
+                if data.check_in_1 is None or data.check_in_1 is "" and data.check_out_1 is None or data.check_out_1 is "" and data.weekly_off == 0:
+                    # data.absent_due_to_below_threshould = 1
+                    data.present_due_to_above_threshould_weekly_off = 0 
+                    data.half_day_due_to_below_threshould_weekly_off = 0
+                    data.absent_due_to_below_threshould_weekly_off = 0
+                    data.half_day_due_to_below_threshould = 0
+                    data.present_due_to_above_threshould = 0
+                    # frappe.errprint(f"Date: {data_date}, Weekly Off: {data.weekly_off}, Absent: {data.absent_due_to_below_threshould}")
+                else:
+                    data.absent_due_to_below_threshould = 0
+
+            
+
+
+
+        for data in self.table1:
+            if str(getdate(data.date)) in holiday_dates:  # If not a holiday
+                # frappe.errprint(f"hd {holiday_dates}")
+                data.weekly_off = 1
+                data.weekend = 1
+        #         if data.check_in_1 is None and data.check_out_1 is None:
+        #             data.absent_due_to_below_threshould = 1  # Mark absent
+        
+        
+        
+
+                
+
+        
+        for data in self.table1:
+            
+
+            date1 = data.date
+            # print(f"\n\n\n\\\n\n\n{date1}")
+            dateobj = getdate(date1)
+            day_of_week = dateobj.strftime('%A')
+            data.day = day_of_week
+            shift = None
+            shift_ass = frappe.get_all("Shift Assignment", filters={'employee': self.employee,
+                                                                    'start_date': ["<=", getdate(data.date)],'end_date': [">=", getdate(data.date)]}, fields=["*"])
+            if len(shift_ass) > 0:
+                shift = shift_ass[0].shift_type
+            else:
+                shift_ass = frappe.get_all("Shift Assignment", filters={'employee': self.employee,
+                                                                    'start_date': ["<=", getdate(data.date)]}, fields=["*"]) 
+            if len(shift_ass) > 0:
+                shift = shift_ass[0].shift_type
+            if shift == None:
+                pass
+                # frappe.throw(_("No shift available for this employee{0}").format(self.employee))
+            data.shift = shift
+            shift_doc = frappe.get_doc("Shift Type", shift)
+            s_type = shift_doc.shift_type
+            data.shift_in = shift_doc.start_time
+            data.shift_out =  shift_doc.end_time
+            
+            # from datetime import datetime, timedelta
+
+            if data.shift_out:
+                if isinstance(data.shift_out, str):
+                    shift_out_time = datetime.strptime(data.shift_out, "%H:%M:%S").time()
+                elif isinstance(data.shift_out, timedelta):
+                    shift_out_time = (datetime.min + data.shift_out).time()
+                else:
+                    shift_out_time = None
+            else:
+                shift_out_time = None
+
+            check_out_1_time = data.check_out_1
+            if check_out_1_time:
+                if isinstance(check_out_1_time, str):
+                    check_out_1_time = datetime.strptime(check_out_1_time, "%H:%M:%S").time()
+                elif isinstance(check_out_1_time, timedelta):
+                    check_out_1_time = (datetime.min + check_out_1_time).time()
+                else:
+                    check_out_1_time = None
+            else:
+                check_out_1_time = None
+
+            # Ensure values are not None before performing calculations
+            if shift_out_time and check_out_1_time:
+                shift_out_dt = datetime.combine(datetime.min, shift_out_time)
+                check_out_1_dt = datetime.combine(datetime.min, check_out_1_time)
+
+                estimate_late = check_out_1_dt - shift_out_dt  # ✅ Now works
+                
+                one_hour = timedelta(hours=1)
+                two_hour = timedelta(hours=2)
+
+                # Convert timedelta to string (hh:mm:ss) for storing in `data.estimate_late`
+                if estimate_late > two_hour:
+                    data.estimated_late = str(two_hour)
+                elif estimate_late > one_hour:
+                    data.estimated_late = str(estimate_late)
+                    
+                    # data.data = str(estimate_late)
+                else:
+                    data.estimated_late = ""
+                    data.data = ""
+                # data.estimated_late = str(estimate_late)
+            else:
+                pass
+            
+            #     frappe.throw(("Shift In or Check Out time is missing for employee {0} on {1}")
+            #  .format(self.employee, data.date))
+            
+        for data in self.table1:
+            for i in range(len(self.table1)):
+                data = self.table1[i]
+
+                # Step 1: Check if the current row is a Weekly Off (potential sandwich)
+                if data.weekly_off == 1:
+                    previous_row = self.table1[i - 1] if i > 0 else None
+                    next_row = self.table1[i + 1] if i + 1 < len(self.table1) else None
+
+                    # Step 2: Ensure previous and next rows exist
+                    if previous_row and next_row:
+                        # ✅ Modified Condition: Ensure the previous and next rows are absent (not another weekly off)
+                        prev_condition = previous_row.weekly_off == 0 and previous_row.absent_due_to_below_threshould == 1
+                        next_condition = next_row.weekly_off == 0 and next_row.absent_due_to_below_threshould == 1
+
+                        if prev_condition and next_condition:
+                            # ✅ Mark sandwich for previous, middle, and next row
+                            previous_row.sandwitch = 1
+                            data.sandwitch = 1
+                            next_row.sandwitch = 1
+                            # frappe.errprint(f"Marked sandwich: {previous_row.date}, {data.date}, {next_row.date}")
+                        else:
+                            # ❌ If condition not met, reset the fields
+                            previous_row.sandwitch = 0
+                            data.sandwitch = 0
+                            next_row.sandwitch = 0
+                            # frappe.errprint(f"Reset sandwich due to condition not met: "
+                            #                 f"prev_weekly_off={previous_row.weekly_off}, prev_absent={previous_row.absent_due_to_below_threshould}, "
+                            #                 f"next_weekly_off={next_row.weekly_off}, next_absent={next_row.absent_due_to_below_threshould}")
+                    else:
+                        # ❌ Reset if no valid previous or next row exists
+                        data.sandwitch = 0
+                        # frappe.errprint(f"Reset sandwich: {data.date} (no previous or next row)")
+
+
+
+            
+            
+
 
         for data in self.table1:
             employee1 = frappe.get_doc("Employee",self.employee)
@@ -179,12 +347,12 @@ class EmployeeAttendance(Document):
                 self.allowance_ = 0       
 
 
-        # Convert time string to timedelta
-        def str_to_timedelta(time_str):
-            if time_str:
-                time_parts = list(map(int, time_str.split(':')))
-                return timedelta(hours=time_parts[0], minutes=time_parts[1], seconds=time_parts[2])
-            return timedelta(0)
+        # # Convert time string to timedelta
+        # def str_to_timedelta(time_str):
+        #     if time_str:
+        #         time_parts = list(map(int, time_str.split(':')))
+        #         return timedelta(hours=time_parts[0], minutes=time_parts[1], seconds=time_parts[2])
+        #     return timedelta(0)
         
         for data in self.table1:
             late += data.late or 0
@@ -280,71 +448,152 @@ class EmployeeAttendance(Document):
                     else:
                         data.late = 0  # Not late if check-in is on or before shift start
 
+
+
         # Loop through data
+        # absent_threshould_1 = 0
+        # self.absent_threshould = sum(data.absent_due_to_below_threshould for data in self.table1)
+        
+
+
         for data in self.table1:
+            
+            # self.absent_threshould += data.absent_due_to_below_threshould
+            
+            
+            
+            def str_to_timedelta(time_str):
+                """Converts time string 'hh:mm:ss' to timedelta object."""
+                if time_str:
+                    time_parts = list(map(int, time_str.split(':')))
+                    return timedelta(hours=time_parts[0], minutes=time_parts[1], seconds=time_parts[2])
+                return timedelta(0)
+
             if data.check_in_1 and data.check_out_1:
                 # Calculate total time
                 check_in_1 = datetime.strptime(data.check_in_1, "%H:%M:%S")
                 check_out_1 = datetime.strptime(data.check_out_1, "%H:%M:%S")
                 total_time_timedelta = check_out_1 - check_in_1
                 data.total_time = str(total_time_timedelta)
+            else:
+                data.total_time = None
+                
+                
+            def str_to_timedelta(time_str):
+                """Converts a time string 'hh:mm:ss' or timedelta to a timedelta object."""
+                if isinstance(time_str, timedelta):  # If it's already timedelta, return it
+                    return time_str
+                if isinstance(time_str, str) and time_str:  # If it's a string, convert it
+                    time_parts = list(map(int, time_str.split(':')))
+                    return timedelta(hours=time_parts[0], minutes=time_parts[1], seconds=time_parts[2])
+                return timedelta(0)  # Default case
+
+            if data.check_in_1 is None and data.check_out_1 is None and data.weekend == 0:
+                # frappe.errprint(f"{data.date}")
+                # pass
+                data.absent_due_to_below_threshould = 1
+               
+            if data.weekend == 1:
+                data.absent_due_to_below_threshould = 0 
 
             if data.weekly_off == 0 and data.check_in_1 and data.check_out_1:
-                # Convert thresholds to timedelta
-                absent_threshould_timedelta = str_to_timedelta(hr_settings.absent_threshould or "00:00:00")
-                half_day_timedelta = str_to_timedelta(hr_settings.half_day_threshould or "00:00:00")
-                present_timedelta = str_to_timedelta(hr_settings.present_threshould or "00:00:00")
+                # Fetch Shift Type details
+                if data.shift:
+                    doc = frappe.get_doc("Shift Type", data.shift)
+                    shift_present_threshould = doc.custom_present_threshould or "00:00:00"
+                    shift_absent_threshould = doc.custom_absent_threshould_ or "00:00:00"
+                    shift_half_day_threshould_copy = doc.custom_halfday_threshould__ or "00:00:00"
+                    self.shift_present_threshould = shift_present_threshould
+                    self.shift_absent_threshould = shift_absent_threshould
+                    self.shift_half_day_threshould_copy = shift_half_day_threshould_copy
 
-                # Mark as absent, half-day, or present
-                if total_time_timedelta < absent_threshould_timedelta:
-                    data.absent_due_to_below_threshould = 1    
-                    data.half_day_due_to_below_threshould = 0
-                    data.present_due_to_above_threshould = 0
-                elif total_time_timedelta < half_day_timedelta:
+                    # Convert thresholds to timedelta
+                    absent_threshould_timedelta = str_to_timedelta(shift_absent_threshould)
+                    half_day_timedelta = str_to_timedelta(shift_half_day_threshould_copy)
+                    present_timedelta = str_to_timedelta(shift_present_threshould)
+
+                    
+                if total_time_timedelta >= absent_threshould_timedelta and total_time_timedelta <= half_day_timedelta :
                     data.half_day_due_to_below_threshould = 1
                     data.absent_due_to_below_threshould = 0
                     data.present_due_to_above_threshould = 0
+                elif absent_threshould_timedelta > total_time_timedelta:
+                    data.half_day_due_to_below_threshould = 0
+                    data.absent_due_to_below_threshould = 1
+                    data.present_due_to_above_threshould = 0
                 elif total_time_timedelta >= present_timedelta:
+                    # frappe.errprint(f"{data.date}{total_time_timedelta}{present_timedelta}")
                     data.present_due_to_above_threshould = 1
                     data.half_day_due_to_below_threshould = 0
                     data.absent_due_to_below_threshould = 0
+                else:
+                    data.present_due_to_above_threshould = 0
+                    data.half_day_due_to_below_threshould = 0
+                    data.absent_due_to_below_threshould = 0
+                    
 
-                absent_threshould += data.absent_due_to_below_threshould
-                half_day_threshould += data.half_day_due_to_below_threshould
-                present_threshould += data.present_due_to_above_threshould
+                # absent_threshould += data.absent_due_to_below_threshould
+                # half_day_threshould += data.half_day_due_to_below_threshould
+                self.present_threshould = sum(data.present_due_to_above_threshould for data in self.table1)
+                self.absent_threshould = sum(data.absent_due_to_below_threshould for data in self.table1)
+                self.half_day_threshould = sum(data.half_day_due_to_below_threshould for data in self.table1)
 
             elif data.weekly_off == 1 and data.check_in_1 and data.check_out_1:
+                if data.shift:
+                    doc = frappe.get_doc("Shift Type", data.shift)
+                    shift_present_threshould = doc.custom_present_threshould or "00:00:00"
+                    shift_absent_threshould = doc.custom_absent_threshould_ or "00:00:00"
+                    shift_half_day_threshould_copy = doc.custom_halfday_threshould__ or "00:00:00"
+                    self.shift_present_threshould = shift_present_threshould
+                    self.shift_absent_threshould = shift_absent_threshould
+                    self.shift_half_day_threshould_copy = shift_half_day_threshould_copy
+                    
                 # Convert thresholds to timedelta
-                absent_threshould_timedelta = str_to_timedelta(hr_settings.absent_threshould or "00:00:00")
-                half_day_timedelta = str_to_timedelta(hr_settings.half_day_threshould or "00:00:00")
-                present_timedelta = str_to_timedelta(hr_settings.present_threshould or "00:00:00")
+                absent_threshould_timedelta = str_to_timedelta(shift_absent_threshould or "00:00:00")
+                half_day_timedelta = str_to_timedelta(shift_half_day_threshould_copy or "00:00:00")
+                present_timedelta = str_to_timedelta(shift_present_threshould or "00:00:00")
 
                 # Mark as absent, half-day, or present for weekly off
-                if total_time_timedelta < absent_threshould_timedelta:
-                    data.absent_due_to_below_threshould_weekly_off = 1    
-                    data.half_day_due_to_below_threshould_weekly_off = 0
+                # if total_time_timedelta < absent_threshould_timedelta:
+                if total_time_timedelta >= absent_threshould_timedelta and total_time_timedelta <= half_day_timedelta :
+                
+                    data.absent_due_to_below_threshould_weekly_off = 0    
+                    data.half_day_due_to_below_threshould_weekly_off = 1
                     data.present_due_to_above_threshould_weekly_off = 0
-                elif total_time_timedelta < half_day_timedelta:
+                # elif total_time_timedelta < half_day_timedelta:
+                
+                elif absent_threshould_timedelta > total_time_timedelta:
                     data.half_day_due_to_below_threshould_weekly_off = 1
                     data.absent_due_to_below_threshould_weekly_off = 0
                     data.present_due_to_above_threshould_weekly_off = 0
+                # elif total_time_timedelta >= present_timedelta:
+                
                 elif total_time_timedelta >= present_timedelta:
                     data.present_due_to_above_threshould_weekly_off = 1
                     data.half_day_due_to_below_threshould_weekly_off = 0
                     data.absent_due_to_below_threshould_weekly_off = 0
+                else:
+                    
+                    data.present_due_to_above_threshould_weekly_off = 0
+                    data.half_day_due_to_below_threshould_weekly_off = 0
+                    data.absent_due_to_below_threshould_weekly_off = 0
+                
+                self.weekend_present = sum(data.present_due_to_above_threshould_weekly_off for data in self.table1)
+                self.weekend_absent = sum(data.absent_due_to_below_threshould_weekly_off for data in self.table1)
+                self.weekend_half_day = sum(data.half_day_due_to_below_threshould_weekly_off for data in self.table1)
 
-                absent_threshould_weekly_off += data.absent_due_to_below_threshould_weekly_off
-                half_day_threshould_weekly_off += data.half_day_due_to_below_threshould_weekly_off
-                present_threshould_weekly_off += data.present_due_to_above_threshould_weekly_off
+                # absent_threshould_weekly_off += data.absent_due_to_below_threshould_weekly_off
+                # half_day_threshould_weekly_off += data.half_day_due_to_below_threshould_weekly_off
+                # present_threshould_weekly_off += data.present_due_to_above_threshould_weekly_off
 
         # Set totals
-        self.half_day_threshould = half_day_threshould
-        self.absent_threshould = absent_threshould
-        self.present_threshould = present_threshould
+        # self.half_day_threshould = half_day_threshould
+        # self.absent_threshould = absent_threshould
+        # self.present_threshould = present_threshould
 
-        self.weekend_half_day = half_day_threshould_weekly_off
-        self.weekend_absent = absent_threshould_weekly_off
-        self.weekend_present = present_threshould_weekly_off
+        # self.weekend_half_day = half_day_threshould_weekly_off
+        # self.weekend_absent = absent_threshould_weekly_off
+        # self.weekend_present = present_threshould_weekly_off
 
         for data in self.table1:
             if data.check_in_1 is None and data.check_out_1 is None or data.check_in_1 is "" or data.check_out_1 is "" :
@@ -464,8 +713,6 @@ class EmployeeAttendance(Document):
 
         # Store the count of marked checkboxes in the parent doctype
         self.early_going = total_early_goings
-        self.manual_absent = str(total_early_going_hours)
-
 
 
         if self.table1:
@@ -493,8 +740,8 @@ class EmployeeAttendance(Document):
         for data in self.table1:
             
             
-            if data.day_type == "Weekly Off":
-                data.weekly_off = 1
+            # if data.day_type == "Weekly Off":
+            #     data.weekly_off = 1
 
             # Sum early_ot
             if data.early_ot:
@@ -623,7 +870,7 @@ class EmployeeAttendance(Document):
             data.early_going_hours = None
             data.early = 0
             data.absent = 0
-            data.weekly_off = 0
+            # data.weekly_off = 0
             data.total_ot_amount = 0
             tempdate = data.date
             holiday_flag = False
@@ -653,7 +900,8 @@ class EmployeeAttendance(Document):
                                     self.total_public_holidays += 1
                                 break
                         if data.public_holiday == 0: 
-                            data.weekly_off = 1
+                            # pass
+                            # data.weekly_off = 1
                             self.total_weekly_off += 1
                         if hr_settings.absent_sandwich in ['Absent Before Holiday']:
                             if previous and previous.absent == 1:
@@ -663,6 +911,7 @@ class EmployeeAttendance(Document):
                                     pass
                                 else:
                                     data.absent=1
+                                    data.absent_due_to_below_threshould = 1
                                     self.total_absents+=1
                                     index+=1
                                     continue
@@ -674,6 +923,7 @@ class EmployeeAttendance(Document):
                                     pass
                                 else:
                                     data.absent=1
+                                    # data.absent_due_to_below_threshould = 1
                                     self.total_absents+=1
                                     index+=1
                                     continue
@@ -745,11 +995,11 @@ class EmployeeAttendance(Document):
 
                     #  day of week 
                 
-                    date1 = data.date
-                    print(f"\n\n\n\\\n\n\n{date1}")
-                    dateobj = getdate(date1)
-                    day_of_week = dateobj.strftime('%A')
-                    data.day = day_of_week
+                    # date1 = data.date
+                    # print(f"\n\n\n\\\n\n\n{date1}")
+                    # dateobj = getdate(date1)
+                    # day_of_week = dateobj.strftime('%A')
+                    # data.day = day_of_week
                     print(dateobj)
                    
                     day_name = datetime.strptime(
@@ -851,7 +1101,7 @@ class EmployeeAttendance(Document):
                                                 # Format total overtime to `HH:MM:SS`
                                                 hours, remainder = divmod(int(total_overtime.total_seconds()), 3600)
                                                 minutes, seconds = divmod(remainder, 60)
-                                                data.estimated_late = f"{hours:02}:{minutes:02}:{seconds:02}"
+                                                # data.estimated_late = f"{hours:02}:{minutes:02}:{seconds:02}"
                                                 break
 
 
@@ -1234,28 +1484,27 @@ class EmployeeAttendance(Document):
                 if data.check_in_1 is not None and data.check_out_1 is None:
                     data.absent = 0
                         
-                if data.weekly_off or data.public_holiday:
+                # if data.weekly_off or data.public_holiday:
                     # If either is True, set weekly_off to 0 and weekday to 0
-                    data.weekly_off = 0
-                    data.weekday = 0
-                    data.public_holiday = 0
-                else:
-                    data.weekday = 1
+                #     data.weekly_off = 0
+                #     data.weekday = 0
+                #     data.public_holiday = 0
+                # else:
+                #     data.weekday = 1
                     
-                if data.weekly_off == 1:
-                    data.day_type = "Weekly Off"
-                elif data.weekday == 1:
-                    data.day_type = "Weekday"
-                
-                if data.day_type == "Public Holiday":
-                    data.public_holiday = 1
+                # if data.weekly_off == 1:
+                #     data.day_type = "Weekly Off"
+                # elif data.weekday == 1:
+                #     data.day_type = "Weekday"
+                # elif data.day_type == "Public Holiday":
+                #     data.public_holiday = 1
                 
 
-                if data.public_holiday == 1:
-                    data.day_type = "Public Holiday"
+                # if data.public_holiday == 1:
+                #     data.day_type = "Public Holiday"
                 
-                if data.day_type == "Weekly Off":
-                    data.weekly_off = 1
+                # if data.day_type == "Weekly Off":
+                #     data.weekly_off = 1
 
                 employee = frappe.get_doc("Employee", self.employee)
                 if employee.custom_late_unmark == 1:
@@ -1654,10 +1903,10 @@ class EmployeeAttendance(Document):
                                                 if check_out_1_time >= record.from_time or check_out_1_time <= record.to_time:
                                                     if isinstance(threshould, timedelta):
                                                         threshold_timedelta = threshould
-                                                        data.estimated_late = "2"
+                                                        # data.estimated_late = "2"
                                                     else:
                                                         threshold_timedelta = timedelta(hours=float(threshould))
-                                                        data.estimated_late = "2"
+                                                        # data.estimated_late = "2"
 
                                                     # data.estimated_late = "difference_str1"
                                                     
@@ -1717,7 +1966,7 @@ class EmployeeAttendance(Document):
 
                                                         # Format the result as a string in hh:mm:ss format
                                                         difference_str1 = f"{hours}:{minutes:02}:{seconds:02}"
-                                                        data.estimated_late = difference_str1
+                                                        # data.estimated_late = difference_str1
 
                                                         # frappe.log_error(f"Calculated Estimated Late: {difference_str1}")
                                                         # log_message = (
@@ -1735,7 +1984,9 @@ class EmployeeAttendance(Document):
                                             # elif check_out_1_time > record.from_time:
                                             #         data.estimated_late = "str1"
                                             else:
-                                                data.estimated_late = "str1"
+                                                pass
+                                            
+                                                # data.estimated_late = "str1"
                                                 
                                                 if isinstance(check_out_1_time, datetime):
                                                     check_out_1_time = check_out_1_time.time()
@@ -1746,10 +1997,10 @@ class EmployeeAttendance(Document):
                                                         threshold_timedelta = timedelta(hours=0)  # Default to zero hours if None
                                                     elif isinstance(threshould, timedelta):
                                                         threshold_timedelta = threshould  # Already a timedelta, no need to convert
-                                                        data.estimated_late = "str2"
+                                                        # data.estimated_late = "str2"
                                                     else:
                                                         threshold_timedelta = timedelta(hours=float(threshould))
-                                                        data.estimated_late = "str3"
+                                                        # data.estimated_late = "str3"
 
 
 
@@ -1757,15 +2008,15 @@ class EmployeeAttendance(Document):
                                                         # Convert timedelta to total hours
                                                         threshold_hours = threshould.total_seconds() / 3600
                                                         threshold_timedelta = timedelta(hours=threshold_hours)
-                                                        data.estimated_late = "str4"
+                                                        # data.estimated_late = "str4"
                                                     elif isinstance(threshould, (int, float, str)) and threshould != '':
                                                         # Convert string/int/float to timedelta
                                                         threshold_timedelta = timedelta(hours=float(threshould))
-                                                        data.estimated_late = "str5"
+                                                        # data.estimated_late = "str5"
                                                     else:
                                                         # Handle None or invalid values
                                                         threshold_timedelta = timedelta(hours=0)
-                                                        data.estimated_late = "str6"
+                                                        # data.estimated_late = "str6"
 
                                                     # if threshould is not None:
                                                     #     threshold_timedelta = timedelta(hours=threshould)
@@ -1777,7 +2028,7 @@ class EmployeeAttendance(Document):
                                                     if time_difference_delta >= threshold_timedelta:
                                                         # Store OTC name
                                                         data.data = record.otc_name
-                                                        data.estimated_late = "str7"
+                                                        # data.estimated_late = "str7"
 
                                                         # Handle fixed hour logic dynamically
                                                         # frappe.log_error(f"Value of fixed_hour: {record.fixed_hour} (Type: {type(record.fixed_hour)})")
@@ -1786,19 +2037,19 @@ class EmployeeAttendance(Document):
                                                         if record.fixed_hour is not None:
                                                             # Check if fixed_hour is a timedelta object
                                                             if isinstance(record.fixed_hour, timedelta):
-                                                                data.estimated_late = "str9"
+                                                                # data.estimated_late = "str9"
                                                                 fixed_hour_timedelta = record.fixed_hour  # Use it directly as it's already timedelta
                                                                 # frappe.log_error(f"Fixed hour timedelta used directly: {fixed_hour_timedelta}")
                                                             else:
                                                                 # frappe.log_error(f"fixed_hour is not a timedelta object, defaulting to 0")
                                                                 fixed_hour_timedelta = timedelta(0)
-                                                                data.estimated_late = "stf1"
+                                                                # data.estimated_late = "stf1"
                                                                 # Default to 0 if it's not a timedelta
                                                         else:
                                                             pass
                                                             # frappe.log_error(f"fixed_hour is None, defaulting to 0")
                                                             fixed_hour_timedelta = timedelta(0)
-                                                            data.estimated_late = "stf2"
+                                                            # data.estimated_late = "stf2"
 
 
                                                         # Evaluate per hour calculation
@@ -1849,7 +2100,7 @@ class EmployeeAttendance(Document):
 
                                                         # if total_time1 > required_hours:
                                                         difference_str1 = f"{hours}:{minutes:02}:{seconds:02}"
-                                                        data.estimated_late = difference_str1
+                                                        # data.estimated_late = difference_str1
 
                                                         # Format the time as hh:mm:ss
                                                         # difference_str1 = f"{hours:02}:{minutes:02}:{seconds:02}"
@@ -1863,7 +2114,8 @@ class EmployeeAttendance(Document):
                                                         #     f"Estimated Late Calculation: {data.estimated_late}"
                                                         # )
                                                     else:
-                                                        data.estimated_late = threshold_timedelta
+                                                        pass
+                                                        # data.estimated_late = threshold_timedelta
                                     else:
                                         pass
 
@@ -2839,6 +3091,8 @@ def check_sanwich_after_holiday(self, previous,data,hr_settings,index):
         for ind in ab_index:
                 if self.table1[ind].absent != 1:
                     self.table1[ind].absent = 1
+                    self.table1[ind].absent_due_to_below_threshould = 1
+                    
                     self.no_of_sundays-=1
                     if self.table1[ind].difference:
                         if self.table1[ind].difference >= timedelta(hours=hr_settings.holiday_halfday_ot,minutes=00,seconds=0) and \
@@ -2877,3 +3131,4 @@ def get_holidays_for_employee(
 	holidays = frappe.get_all("Holiday", fields=["description","public_holiday", "weekly_off","holiday_date"], filters=filters)
 
 	return holidays
+
